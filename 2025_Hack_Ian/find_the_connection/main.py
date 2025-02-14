@@ -50,7 +50,8 @@ def main():
     # print(get_direct_connection(proxy1, graph)[0])
 
     print("start loop detection")
-    print(loop_detecton(graph, "3hP3TktpfEHuFubiINX0a$", max_depth=3))
+    node = graph.node_dict["3hP3TktpfEHuFubiINX0a$"]
+    print(loop_detecton(node, max_depth=3))
     print("done")
 
 

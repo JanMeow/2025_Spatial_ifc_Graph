@@ -15,3 +15,6 @@ Thumbs.db  # Windows
 # Ignore IDE/editor settings
 .vscode/
 .idea/
+
+# Ignore Environmental Variables
+**/var.py

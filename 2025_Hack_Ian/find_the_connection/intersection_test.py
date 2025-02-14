@@ -49,7 +49,7 @@ def get_planes(entity, get_global = True):
     # print(linalg.solve)
 
 
-def loop_detecton(graph, node_guid, max_depth=3):
+def loop_detecton(node, max_depth=3):
     route_dict = {}
 
     # Example
@@ -60,30 +60,28 @@ def loop_detecton(graph, node_guid, max_depth=3):
         "B":[["A", "C", "B"]],
     }
 
-    def dfs(node_guid, depth =0, prev = None):
+    def dfs(node, depth =0, prev = None):
 
-        if depth > max_depth:
+        if depth >= max_depth:
             return
         # Get the current node
-        current = graph.node_dict[node_guid]
-        key = current.guid
-        
+        key = node.guid
         # If not seen, create new nodestart
         if key not in route_dict:
             route_dict[key] = []
         elif prev:
-            route_dict[prev].append(current.guid)
+            route_dict[prev].append(key)
             return
+        prev = key
+        for near in node.near:
+            if near.guid != prev:
+                dfs(near, depth + 1, prev = prev)
 
-        for near_guid in current.near:
-            if near_guid != prev:
-                dfs(near_guid, depth +1, prev = key)
+    dfs(node)
 
-    dfs(node_guid)
 
 
     return route_dict
-
 
 # Library methods which I will replace soon
 def get_adjacent(model, entity, tolerance = 0.001):
