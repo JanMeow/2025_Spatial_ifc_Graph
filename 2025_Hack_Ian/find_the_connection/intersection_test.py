@@ -51,34 +51,39 @@ def get_planes(entity, get_global = True):
 
 def loop_detecton(node, max_depth=3):
     route_dict = {}
+    memory = [None] * (max_depth)
 
     # Example
-    dict = {
+    dict_ = {
 
         "A":[[ "B", "C", "A"],
+             ["B", "C", "D"],
             ["C2", "B", "A"]],
-        "B":[["A", "C", "B"]],
     }
 
-    def dfs(node, depth =0, prev = None):
+    def dfs(node, depth =0, root = None, prev = None, memory = memory):
 
-        if depth >= max_depth:
-            return
-        # Get the current node
-        key = node.guid
-        # If not seen, create new nodestart
-        if key not in route_dict:
-            route_dict[key] = []
-        elif prev:
-            route_dict[prev].append(key)
-            return
-        prev = key
-        for near in node.near:
-            if near.guid != prev:
-                dfs(near, depth + 1, prev = prev)
+      # Stop if it exceeds bound
+      if depth >= max_depth:
+        if root in [node.guid for node in node.near]:
+          insertion = memory[:-1] + [root] 
+          route_dict[root].append(insertion)
+        return
+      # Get the current node
+      key = node.guid
+      # rmb the root
+      if prev == None:
+        root = key
+        route_dict[root] = []
+      else:
+        memory[depth-1] = key
+
+      print(memory)
+      for near in node.near:
+        if near.guid != prev:
+            dfs(near, depth = depth +1, root = root, prev = key, memory = memory)
 
     dfs(node)
-
 
 
     return route_dict
@@ -103,7 +108,7 @@ def get_adjacent(model, entity, tolerance = 0.001):
 
   result = t.select(entity,  extend=tolerance)
 
-  adj_guid = [connection.GlobalId for connection in result]
+  adj_guid = [connection.GlobalId for connection in result if connection.GlobalId != entity.GlobalId]
 
   return adj_guid
 
