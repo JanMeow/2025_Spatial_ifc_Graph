@@ -57,7 +57,7 @@ def loop_detecton(node, max_depth=3):
     dict_ = {
 
         "A":[[ "B", "C", "A"],
-             ["B", "C", "D"],
+             ["B", "D", "A"],
             ["C2", "B", "A"]],
     }
 
@@ -66,27 +66,26 @@ def loop_detecton(node, max_depth=3):
       # Stop if it exceeds bound
       if depth >= max_depth:
         if root in [node.guid for node in node.near]:
-          insertion = memory[:-1] + [root] 
+          insertion = memory[:-1] + [node.guid] 
           route_dict[root].append(insertion)
         return
       # Get the current node
       key = node.guid
-      # rmb the root
+      # Rmb the root
       if prev == None:
         root = key
         route_dict[root] = []
       else:
         memory[depth-1] = key
-
-      print(memory)
+      # Begin traversal
       for near in node.near:
         if near.guid != prev:
-            dfs(near, depth = depth +1, root = root, prev = key, memory = memory)
+          dfs(near, depth = depth +1, root = root, prev = key, memory = memory)
 
     dfs(node)
-
-
+    
     return route_dict
+
 
 # Library methods which I will replace soon
 def get_adjacent(model, entity, tolerance = 0.001):
