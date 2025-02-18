@@ -66,7 +66,8 @@ def loop_detecton(node, max_depth=3):
       # Stop if it exceeds bound
       if depth >= max_depth:
         if root in [node.guid for node in node.near]:
-          insertion = memory[:-1] + [node.guid] 
+          memory[depth-1] = node.guid
+          insertion = memory[:] 
           route_dict[root].append(insertion)
         return
       # Get the current node
@@ -78,12 +79,14 @@ def loop_detecton(node, max_depth=3):
       else:
         memory[depth-1] = key
       # Begin traversal
+      print(memory)
       for near in node.near:
         if near.guid != prev:
           dfs(near, depth = depth +1, root = root, prev = key, memory = memory)
 
     dfs(node)
-    
+
+
     return route_dict
 
 
