@@ -14,39 +14,6 @@ def get_intersection(entity1, entity2):
     return intersection.view(arr1.dtype).reshape(-1, arr1.shape[1])
 
 
-def get_triangulated_equation(A, B, C):
-
-    
-    # Compute vectors V1 and V2
-    V1 = B - A
-    V2 = C - A
-    
-    # Compute the normal vector (A, B, C) using cross product
-    normal = np.cross(V1, V2)
-    A, B, C = normal
-    
-    # Compute D using the plane equation
-    D = -np.dot(normal, A)  # Substituting A into Ax + By + Cz + D = 0
-
-    # Print(equation)
-    print(f"Plane equation: {A}x + {B}y + {C}z + {D} = 0")
-
-    return A, B, C, D
-
-def get_planes(entity, get_global = True):
-    geom_info =  get_geometry_info(entity, get_global)
-    vertex = geom_info[1]
-    vertex_indices = geom_info[2]
-
-    arr_shape = (vertex_indices.shape[0], vertex_indices.shape[1], vertex.shape[1])
-    array = np.zeros(arr_shape, dtype = np.float32)
-    for i,index in enumerate(vertex_indices):
-        A, B, C = vertex[index[0]], vertex[index[1]], vertex[index[2]]
-        v_stack = np.vstack((A,B,C))
-        array[i] = v_stack
-        # plane = get_triangulated_equation(A, B, C)
-    print(array)
-    # print(linalg.solve)
 
 
 def loop_detecton(node, max_depth=3):
@@ -109,18 +76,14 @@ def get_adjacent(model, entity, tolerance = 0.001):
           break
 
   result = t.select(entity,  extend=tolerance)
-
   adj_guid = [connection.GlobalId for connection in result if connection.GlobalId != entity.GlobalId]
-
   return adj_guid
 
 
 def get_direct_connection(entity, graph):
   search_key = entity.GlobalId
-
   node = graph.node_dict[search_key]
   string1 = node.psets["Cadwork3dProperties"]["BTA TYP"]
   connections = [string1 + "//" + graph.node_dict[node.guid].psets["Cadwork3dProperties"]["BTA TYP"] for node in node.near]
   highlights = [graph.node_dict[node.guid].guid for node in node.near]
-
   return connections,highlights
