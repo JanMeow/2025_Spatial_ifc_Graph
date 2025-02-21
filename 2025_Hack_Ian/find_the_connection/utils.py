@@ -2,8 +2,10 @@ import numpy as np
 import ifcopenshell
 import ifcopenshell.geom
 import ifcopenshell.util.shape
+import collision
 from collections import deque
-
+# ====================================================================
+# ====================================================================
 # Tree Traversal
 # ====================================================================
 def bfs_traverse(base_node, list_contained_elements = True, func = None):
@@ -35,7 +37,7 @@ def bfs_traverse(base_node, list_contained_elements = True, func = None):
   print("Function ended, No more spatial child")
   return result
 
-
+# ====================================================================
 # Geometry Processing
 # ====================================================================
 def get_bbox(arr):
@@ -106,7 +108,7 @@ def get_planes(entity, get_global = True):
     return array
 
 
-
+# ====================================================================
 # Graph Helper Functions
 # ====================================================================
 def write_to_node(current_node):
@@ -116,26 +118,20 @@ def write_to_node(current_node):
       psets = ifcopenshell.util.element.get_psets(current_node)
       node = Node(current_node.Name, current_node.is_a(), current_node.GlobalId, geom_infos, psets)
       return node
-
-def create_graph(root):
-  graph = Graph()
-  for node in bfs_traverse(root, True,write_to_node):
-    if node!= None:
-      graph.node_dict[node.guid] = node
-  return graph
-
-
+# ====================================================================
 # Class Definition for Graph and Node 
 # ====================================================================
 class Graph:
-  def __init__(self,root):
-    self.root = root
+  def __init__(self):
     self.node_dict = {}
-    self.bbox = get_bbox(self)
+    self.bbox = None
+    self.longest_axis = None
+
+
 
   def __len__(self):
         return len(self.node_dict)
-  
+
   def get_bbox(self):
     arr = np.zeros((2,3))
     for node in self.node_dict.values():
@@ -143,14 +139,66 @@ class Graph:
         arr = np.vstack((arr, node.geom_info["bbox"]))
     max = np.max(arr[1:,:], axis = 0)
     min = np.min(arr[1:,:], axis = 0)
-    return np.vstack((min,max))
+    self.bbox = np.vstack((min,max))
+    self.longest_axis = np.argmax((self.bbox[1] - self.bbox[0]))
+    return 
+  
+  def sort_nodes_along_axis(self, axis):
+    temp = sorted([node for node in self.node_dict.values()],key = lambda x: x.geom_info["bbox"][0][axis] )
+    new_dict = {node.guid:node for node in temp}
+    self.node_dict = new_dict
+    return self.node_dict
+  
+  def build_bvh(self):
+    sorted_nodes = list(self.sort_nodes_along_axis(self.longest_axis).values())
+    return collision.build_bvh(sorted_nodes)
+  
+  def bvh_query(self,bbox, func = None):
+    current = list(self.node_dict.values())[len(self)//2]
+    axis = self.longest_axis
+
+    while current != None:
+      prev = current
+      if bbox[0][axis] < current.geom_info["bbox"][0][axis]:
+        current = current.bvh_left
+      else:
+        current = current.bvh_right
+
+    if (prev.geom_info["bbox"] == bbox).all():
+      print("No exact matches, Returning nearest")
+    else:
+      print("Exact match found")
+    return prev
+  
+
+  # Lets be sure about what are the conditions that collision will not happen so we dpont need to check on Monday
+  def collision_test(self, bbox):
+    axis = self.longest_axis
+    collisions = []
+    stack = [list(self.node_dict.values())[len(self)//2]]
+    while len(stack) != 0:
+      current = stack.pop()
+      current_bbox = current.geom_info["bbox"]
+      if collision.intersect(bbox,current_bbox):
+        print()
+        collisions.append(current.guid)
+      if bbox[0][axis] < current_bbox[0][axis]:
+        if current.bvh_left != None:
+          stack.append(current.bvh_left)
+      if bbox[1][axis] >= current_bbox[1][axis]:
+        if current.bvh_right != None:
+          stack.append(current.bvh_right)
+    return collisions
+
+
   
   @classmethod
   def create(cls, root):
-    cls = cls(root)
+    cls = cls()
     for node in bfs_traverse(root, True,write_to_node):
       if node!= None:
         cls.node_dict[node.guid] = node
+    cls.get_bbox()
     return cls
 
 class Node:
@@ -160,4 +208,11 @@ class Node:
     self.geom_info = geom_info
     self.guid = guid
     self.psets = psets
-    self.near = []  
+    self.near = []
+    self.bvh_left = None
+    self.bvh_right = None
+  
+  def intersect(node1,node2):
+    bbox1 = node1.geom_info["bbox"]
+    bbox2 = node2.geom_info["bbox"]
+    return collision.intersect(bbox1,bbox2)

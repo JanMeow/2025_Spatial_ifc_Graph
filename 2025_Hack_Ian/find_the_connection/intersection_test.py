@@ -2,7 +2,9 @@ import numpy as np
 from utils import get_geometry_info
 import ifcopenshell
 import multiprocessing
-
+# ====================================================================
+# Previous detection to see if an object embed another
+# ====================================================================
 def get_intersection(entity1, entity2):
     # Get the geometry information
     arr1 = get_geometry_info(entity1, True)[1]
@@ -12,10 +14,9 @@ def get_intersection(entity1, entity2):
     arr2_view = arr2.view([('', arr2.dtype)] * arr2.shape[1])  # Convert rows to structured dtype
     intersection = np.intersect1d(arr1_view, arr2_view)  # Find intersecting rows
     return intersection.view(arr1.dtype).reshape(-1, arr1.shape[1])
-
-
-
-
+# ====================================================================
+# Loop Detection for corner
+# ====================================================================
 def loop_detecton(node, max_depth=3):
     route_dict = {}
     memory = [None] * (max_depth)
@@ -55,9 +56,9 @@ def loop_detecton(node, max_depth=3):
 
 
     return route_dict
-
-
-# Library methods which I will replace soon
+# ====================================================================
+# BVH tree from library but not reliable
+# ====================================================================
 def get_adjacent(model, entity, tolerance = 0.001):
   # Query neighboruing elements using BVH
   # setup BVH tree

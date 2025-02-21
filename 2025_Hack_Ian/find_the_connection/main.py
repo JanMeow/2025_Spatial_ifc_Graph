@@ -1,6 +1,6 @@
 from pathlib import Path
 import ifcopenshell
-from utils import  Graph
+from utils import  Graph, Node
 from intersection_test import  get_adjacent, get_direct_connection, loop_detecton
 
 
@@ -17,15 +17,33 @@ def main():
     print(model.schema)
 
     root = model.by_type("IfcProject")[0]
-    proxy1 = model.by_guid("3hP3TktpfEHuFubiINX0a$")
-    proxy2 = model.by_guid("3o14as6$P1GQOeedYgIq1J")
+    guid1 = "3hP3TktpfEHuFubiINX0a$"
+    guid2 = "3o14as6$P1GQOeedYgIq1J"
+    proxy1 = model.by_guid(guid1)
+    proxy2 = model.by_guid(guid2)
+    column = model.by_type("IfcColumn")[0]
 
 
 
     # Create a graph
     graph = Graph.create(root)
-    overall = graph.get_bbox()
-    print(overall)
+    # Establish BVH Tree for the nodes 
+    graph.build_bvh()
+    node1 = graph.node_dict[guid1]
+    node2 = graph.node_dict[guid2]
+
+    print(graph.bvh_query(node1.geom_info["bbox"]))
+    print(graph.collision_test(node1.geom_info["bbox"]))
+
+
+    adjs = get_adjacent(model, proxy1)
+    # print(adjs)
+    # for guid in adjs:
+    #     print(Node.intersect(node1, graph.node_dict[guid]))
+    # column = graph.node_dict[column.GlobalId]  
+    # print(Node.intersect(node1, node2))
+    # print(Node.intersect(node1, column))
+
 
     # test for intersectionrs
     # result = get_intersection(proxy1, proxy2)
