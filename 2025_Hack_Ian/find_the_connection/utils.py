@@ -126,20 +126,18 @@ class Graph:
     self.node_dict = {}
     self.bbox = None
     self.longest_axis = None
-
-
+    self.bvh = None
 
   def __len__(self):
         return len(self.node_dict)
 
   def get_bbox(self):
-    arr = np.zeros((2,3))
-    for node in self.node_dict.values():
-      if node.geom_info != None:
-        arr = np.vstack((arr, node.geom_info["bbox"]))
-    max = np.max(arr[1:,:], axis = 0)
-    min = np.min(arr[1:,:], axis = 0)
-    self.bbox = np.vstack((min,max))
+    arr = np.vstack([node.geom_info["bbox"] for node in self.node_dict.values() 
+                     if node.geom_info !=None])
+    _max = np.max(arr, axis = 0)
+    _min = np.min(arr, axis = 0)
+    self.bbox = np.vstack((_min,_max))
+    print(self.bbox)
     self.longest_axis = np.argmax((self.bbox[1] - self.bbox[0]))
     return 
   
@@ -151,47 +149,32 @@ class Graph:
   
   def build_bvh(self):
     sorted_nodes = list(self.sort_nodes_along_axis(self.longest_axis).values())
-    return collision.build_bvh(sorted_nodes)
+    self.bvh = collision.build_bvh(sorted_nodes)
+    return 
   
-  def bvh_query(self,bbox, func = None):
-    current = list(self.node_dict.values())[len(self)//2]
-    axis = self.longest_axis
-
-    while current != None:
-      prev = current
-      if bbox[0][axis] < current.geom_info["bbox"][0][axis]:
-        current = current.bvh_left
-      else:
-        current = current.bvh_right
-
-    if (prev.geom_info["bbox"] == bbox).all():
-      print("No exact matches, Returning nearest")
-    else:
-      print("Exact match found")
-    return prev
-  
-
-  # Lets be sure about what are the conditions that collision will not happen so we dpont need to check on Monday
-  def collision_test(self, bbox):
-    axis = self.longest_axis
+  def bvh_query(self, bbox):
     collisions = []
-    stack = [list(self.node_dict.values())[len(self)//2]]
-    while len(stack) != 0:
-      current = stack.pop()
-      current_bbox = current.geom_info["bbox"]
-      if collision.intersect(bbox,current_bbox):
-        print()
-        collisions.append(current.guid)
-      if bbox[0][axis] < current_bbox[0][axis]:
-        if current.bvh_left != None:
-          stack.append(current.bvh_left)
-      if bbox[1][axis] >= current_bbox[1][axis]:
-        if current.bvh_right != None:
-          stack.append(current.bvh_right)
-    return collisions
+    if self.bvh == None:
+      self.build_bvh()
+    stack = [self.bvh]
+    while stack:
+      current_bvh = stack.pop()
+      current_bbox = current_bvh.bbox
+      # print(bbox)
+      # print(current_bbox)
+      # print(collision.intersect(bbox,current_bbox))
+      # if collide with current bvh, then check child
+      if collision.intersect(bbox,current_bbox) or collision.envelop(bbox,current_bbox):
+        if current_bvh.leaf:
+          collisions.append(current_bvh.nodes)
+        if current_bvh.left:
+          stack.append(current_bvh.left)
+        if current_bvh.right:
+          stack.append(current_bvh.right)
+    return [node.guid for node in collisions]
 
-
-  
+# if my smaller angle bigger than you bigger angle then we dont need to check
+# if bbox[0][axis] >= current_bbox[1][axis]:
   @classmethod
   def create(cls, root):
     cls = cls()
@@ -209,8 +192,6 @@ class Node:
     self.guid = guid
     self.psets = psets
     self.near = []
-    self.bvh_left = None
-    self.bvh_right = None
   
   def intersect(node1,node2):
     bbox1 = node1.geom_info["bbox"]

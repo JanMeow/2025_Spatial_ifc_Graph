@@ -2,6 +2,7 @@ from pathlib import Path
 import ifcopenshell
 from utils import  Graph, Node
 from intersection_test import  get_adjacent, get_direct_connection, loop_detecton
+import collision
 
 
 ifc_folder = Path("data")/"ifc"
@@ -23,31 +24,18 @@ def main():
     proxy2 = model.by_guid(guid2)
     column = model.by_type("IfcColumn")[0]
 
-
-
     # Create a graph
     graph = Graph.create(root)
     # Establish BVH Tree for the nodes 
     graph.build_bvh()
+    
     node1 = graph.node_dict[guid1]
     node2 = graph.node_dict[guid2]
-
-    print(graph.bvh_query(node1.geom_info["bbox"]))
-    print(graph.collision_test(node1.geom_info["bbox"]))
-
-
+    queries = graph.bvh_query(node1.geom_info["bbox"])
     adjs = get_adjacent(model, proxy1)
-    # print(adjs)
-    # for guid in adjs:
-    #     print(Node.intersect(node1, graph.node_dict[guid]))
-    # column = graph.node_dict[column.GlobalId]  
-    # print(Node.intersect(node1, node2))
-    # print(Node.intersect(node1, column))
+    print(queries)
+    print(adjs)
 
-
-    # test for intersectionrs
-    # result = get_intersection(proxy1, proxy2)
-    # print(result)
 
 
 
