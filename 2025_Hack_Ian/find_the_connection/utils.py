@@ -137,10 +137,6 @@ class Graph:
   def loop_detection(self, guid, max_depth):
     node = self.node_dict[guid]
     return loop_detecton(node, max_depth)
-
-
-# if my smaller angle bigger than you bigger angle then we dont need to check
-# if bbox[0][axis] >= current_bbox[1][axis]:
   @classmethod
   def create(cls, root):
     cls = cls(root.GlobalId)
