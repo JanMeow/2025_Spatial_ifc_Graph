@@ -41,7 +41,6 @@ def get_bbox(bboxs):
     arr = np.vstack(bboxs)
     _min = np.min(arr, axis = 0)
     _max = np.max(arr, axis = 0)
-
     return np.vstack((_min,_max))
 def envelop(bbox1, bbox2):
     b1 = np.all(bbox1[0]>=bbox2[0]) and np.all(bbox1[1]<=bbox2[1]) 

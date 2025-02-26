@@ -2,7 +2,6 @@ from pathlib import Path
 import ifcopenshell
 from utils import  Graph, Node
 from intersection_test import  get_adjacent, get_direct_connection, loop_detecton
-import collision
 
 
 ifc_folder = Path("data")/"ifc"
@@ -28,7 +27,7 @@ def main():
     graph = Graph.create(root)
     # Establish BVH Tree for the nodes 
     graph.build_bvh()
-    
+
     node1 = graph.node_dict[guid1]
     node2 = graph.node_dict[guid2]
     queries = graph.bvh_query(node1.geom_info["bbox"])

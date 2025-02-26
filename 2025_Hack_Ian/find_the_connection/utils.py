@@ -44,7 +44,6 @@ def get_bbox(arr):
   max = np.max(arr, axis = 0)
   min = np.min(arr, axis = 0)
   return np.vstack((min,max))
-
 def get_geometry_info(entity, get_global = False):
   if hasattr(entity, "Representation"):
     if entity.Representation != None:
@@ -75,7 +74,6 @@ def get_geometry_info(entity, get_global = False):
       result["bbox"] = get_bbox(result["vertex"])
       return result
   return None
-
 def get_triangulated_equation(A, B, C):
     # Compute vectors V1 and V2
     V1 = B - A
@@ -160,11 +158,7 @@ class Graph:
     while stack:
       current_bvh = stack.pop()
       current_bbox = current_bvh.bbox
-      # print(bbox)
-      # print(current_bbox)
-      # print(collision.intersect(bbox,current_bbox))
-      # if collide with current bvh, then check child
-      if collision.intersect(bbox,current_bbox) or collision.envelop(bbox,current_bbox):
+      if collision.intersect(bbox,current_bbox):
         if current_bvh.leaf:
           collisions.append(current_bvh.nodes)
         if current_bvh.left:
