@@ -3,40 +3,7 @@ import ifcopenshell
 import ifcopenshell.geom
 import ifcopenshell.util.shape
 import collision
-from collections import deque
-# ====================================================================
-# ====================================================================
-# Tree Traversal
-# ====================================================================
-def bfs_traverse(base_node, list_contained_elements = True, func = None):
-  queue = deque([base_node])
-  depth = 0
-  result = []
-  while len(queue) !=0 :
-    current_node = queue.popleft()
-    print(f"CURRENT DEPTH : {depth} [TYPE] {current_node.is_a()} [GUID] ({current_node.GlobalId}) [NAME] {current_node.Name}")
-
-    if func:
-      result.append(func(current_node))
-
-    if hasattr(current_node, "ContainsElements") and len(current_node.ContainsElements) != 0:
-
-      for element_rel in current_node.ContainsElements:
-        print(f"Contained Elements: {len(element_rel.RelatedElements)}")
-        if list_contained_elements:
-          for child_element in element_rel.RelatedElements:
-            queue.append(child_element)
-
-    if hasattr(current_node, "IsDecomposedBy") and len(current_node.IsDecomposedBy) != 0:
-      depth +=1
-      for child_rel in current_node.IsDecomposedBy:
-        print(f"Number of child: {len(child_rel.RelatedObjects)}")
-        for child_obj in child_rel.RelatedObjects:
-          queue.append(child_obj)
-
-  print("Function ended, No more spatial child")
-  return result
-
+from traversal import bfs_traverse, loop_detecton
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -105,7 +72,6 @@ def get_planes(entity, get_global = True):
         # plane = get_triangulated_equation(A, B, C)
     return array
 
-
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
@@ -120,7 +86,8 @@ def write_to_node(current_node):
 # Class Definition for Graph and Node 
 # ====================================================================
 class Graph:
-  def __init__(self):
+  def __init__(self,root):
+    self.root = root
     self.node_dict = {}
     self.bbox = None
     self.longest_axis = None
@@ -128,7 +95,6 @@ class Graph:
 
   def __len__(self):
         return len(self.node_dict)
-
   def get_bbox(self):
     arr = np.vstack([node.geom_info["bbox"] for node in self.node_dict.values() 
                      if node.geom_info !=None])
@@ -138,18 +104,15 @@ class Graph:
     print(self.bbox)
     self.longest_axis = np.argmax((self.bbox[1] - self.bbox[0]))
     return 
-  
   def sort_nodes_along_axis(self, axis):
     temp = sorted([node for node in self.node_dict.values()],key = lambda x: x.geom_info["bbox"][0][axis] )
     new_dict = {node.guid:node for node in temp}
     self.node_dict = new_dict
     return self.node_dict
-  
   def build_bvh(self):
     sorted_nodes = list(self.sort_nodes_along_axis(self.longest_axis).values())
     self.bvh = collision.build_bvh(sorted_nodes)
     return 
-  
   def bvh_query(self, bbox):
     collisions = []
     if self.bvh == None:
@@ -166,18 +129,26 @@ class Graph:
         if current_bvh.right:
           stack.append(current_bvh.right)
     return [node.guid for node in collisions]
+  def get_connections(self,guid):
+    node = self.node_dict[guid]
+    connections = [guid + "//" + node_n.guid for node_n in node.near
+                   if node_n.guid != guid]
+    return connections
+  def loop_detection(self, guid, max_depth):
+    node = self.node_dict[guid]
+    return loop_detecton(node, max_depth)
+
 
 # if my smaller angle bigger than you bigger angle then we dont need to check
 # if bbox[0][axis] >= current_bbox[1][axis]:
   @classmethod
   def create(cls, root):
-    cls = cls()
+    cls = cls(root.GlobalId)
     for node in bfs_traverse(root, True,write_to_node):
       if node!= None:
         cls.node_dict[node.guid] = node
     cls.get_bbox()
     return cls
-
 class Node:
   def __init__(self, name, _type, guid, geom_info, psets) :
     self.name = name

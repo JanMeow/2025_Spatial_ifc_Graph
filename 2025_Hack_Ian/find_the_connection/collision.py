@@ -49,9 +49,54 @@ def envelop(bbox1, bbox2):
 # ====================================================================
 # Narrow Phase Collision Detection
 # ====================================================================
-# 1. Get Minoski Difference/
-def get_minowski_diff(a,b):
-    return a - b
-# 2. Get support function
-# 3. Get the closest point on the convex Hull
+# 1. Get support function
+def support(shape, direction):
+    return max(shape, key = lambda pt: np.dot(pt,direction))
+# 2. Minknowsi Difference
+def minkownsi_support(shape1, shape2, direction):
+    return support(shape1, direction) - support(shape2, -direction)
+# 3. Find triple Product
+def triple_product(a,b,c):
+    return np.dot(a,np.cross(b,c))
 # 4. Check if the simplex formed within the convex Hull contains (0,0)
+def contain_origin(simplex, direction):
+    if len(simplex) == 2:
+        A,B = simplex
+        AB = B-A
+        AO = -A
+        if np.dot(AB, AO) >0:
+            direction[:] = triple_product(AO, AB, AB)
+        else:
+            simplex[:] = [A]
+            direction[:] = AO
+        return False
+    if len(simplex) == 3:
+        A,B,C = simplex
+        AB = B-A
+        AC = C-A
+        AO = -A
+        normal = np.cross(AB, AC)
+
+        if np.dot(np.cross(normal, AC), AO) > 0:
+            simplex[:] = [A,C]
+            direction[:] =triple_product(AC, AO, AC)
+        elif np.dot(np.cross(AB, normal), AO) > 0:
+            simplex[:] = [A,B]
+            direction[:] = triple_product(AB, AO, AB)
+        else:
+            return True
+        return False
+# Actual GJK Algorithm
+def GJK(shape1, shape2):
+    direction = np.array([1,0,0])
+    simplex = [minkownsi_support(shape1, shape2, direction)]
+    direction = -simplex[0]
+    while True:
+        new_pt = minkownsi_support(shape1, shape2, direction)
+        if np.dot(new_pt,direction) < 0:
+            print("No collision detected")
+            return False
+        simplex.append(new_pt)
+        if contain_origin(simplex, direction):
+            print("origin in triangle, collision detected")
+            return True 
