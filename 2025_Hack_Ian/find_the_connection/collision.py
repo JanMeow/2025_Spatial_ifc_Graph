@@ -119,7 +119,7 @@ def gjk(shape1, shape2, max_iter = 20):
         simplex.append(new_pt)
         if contain_origin(simplex, direction):
             return True 
-    print(f"GJK did not converge with {shape1} and {shape2}")
+    print(f"GJK did not converge")
     return False
 # Note that if the input are the same, meaning two triangle are overlapping
 # GJK might not converge so need to add a check before that
