@@ -1,7 +1,9 @@
 import ifcopenshell
 from pathlib import Path
-from utils import  Graph, Node
+from utils import  Graph, get_triangulated_planes
 from traversal import get_adjacent
+from collision import gjk
+import numpy as np
 
 
 ifc_folder = Path("data")/"ifc"
@@ -46,7 +48,7 @@ def main():
     # print(graph.loop_detection(guid1, max_depth=3))
 
     # Test Narrow Phase Collision Detection
-    print(node1.geom_info)
+    gjk_test = graph.gjk_query(guid1, guid2)
 
 
 

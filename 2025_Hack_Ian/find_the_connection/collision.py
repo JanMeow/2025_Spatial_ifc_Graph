@@ -49,6 +49,21 @@ def envelop(bbox1, bbox2):
 # ====================================================================
 # Narrow Phase Collision Detection
 # ====================================================================
+# 0.Initial Direction to avoide degenerate
+def compute_centroid(shape):
+    return np.mean(shape, axis=0)
+
+def initial_direction_from_centroids(shape1, shape2):
+    centroid1 = compute_centroid(shape1)
+    centroid2 = compute_centroid(shape2)
+    direction = centroid1 - centroid2
+    
+    if np.allclose(direction, 0, atol=1e-6):  
+        bbox_min = np.min(shape, axis=0)
+        bbox_max = np.max(shape, axis=0)
+        return bbox_max - bbox_min  # Default fallback
+
+    return direction
 # 1. Get support function
 def support(shape, direction):
     return max(shape, key = lambda pt: np.dot(pt,direction))
@@ -57,46 +72,70 @@ def minkownsi_support(shape1, shape2, direction):
     return support(shape1, direction) - support(shape2, -direction)
 # 3. Find triple Product
 def triple_product(a,b,c):
-    return np.dot(a,np.cross(b,c))
+    return np.cross(np.cross(b,c),a)
 # 4. Check if the simplex formed within the convex Hull contains (0,0)
 def contain_origin(simplex, direction):
     if len(simplex) == 2:
-        A,B = simplex
-        AB = B-A
-        AO = -A
-        if np.dot(AB, AO) >0:
-            direction[:] = triple_product(AO, AB, AB)
-        else:
-            simplex[:] = [A]
-            direction[:] = AO
-        return False
-    if len(simplex) == 3:
-        A,B,C = simplex
-        AB = B-A
-        AC = C-A
-        AO = -A
-        normal = np.cross(AB, AC)
+        A, B = simplex
+        AB = B - A
+        AO = -A  
 
+        if np.dot(AB, AO) > 0:
+            direction[:] = triple_product(AB, AO, AB)  # New perpendicular direction
+        else:
+            simplex.pop()  # Remove B, keep A
+            direction[:] = AO  # New direction towards origin
+        return False
+
+    elif len(simplex) == 3:
+        # Triangle case
+        A, B, C = simplex
+        AB = B - A
+        AC = C - A
+        AO = -A  # Vector from A to the origin
+
+        normal = np.cross(AB, AC)  # Triangle normal
         if np.dot(np.cross(normal, AC), AO) > 0:
-            simplex[:] = [A,C]
-            direction[:] =triple_product(AC, AO, AC)
+            simplex.pop(1)
+            direction[:] = triple_product(AC, AO, AC)
         elif np.dot(np.cross(AB, normal), AO) > 0:
-            simplex[:] = [A,B]
+            simplex.pop(2)
             direction[:] = triple_product(AB, AO, AB)
         else:
-            return True
-        return False
+            return True  # Origin is within the triangle
+    return False
 # Actual GJK Algorithm
-def GJK(shape1, shape2):
-    direction = np.array([1,0,0])
+def gjk(shape1, shape2, max_iter = 20):
+    direction = initial_direction_from_centroids(shape1, shape2)
     simplex = [minkownsi_support(shape1, shape2, direction)]
     direction = -simplex[0]
-    while True:
+    iter_count = 0
+
+    while iter_count < max_iter:
+        iter_count += 1
         new_pt = minkownsi_support(shape1, shape2, direction)
         if np.dot(new_pt,direction) < 0:
-            print("No collision detected")
             return False
         simplex.append(new_pt)
         if contain_origin(simplex, direction):
-            print("origin in triangle, collision detected")
             return True 
+    print(f"GJK did not converge with {shape1} and {shape2}")
+    return False
+# Note that if the input are the same, meaning two triangle are overlapping
+# GJK might not converge so need to add a check before that
+def check_tolerance(shape1, shape2, tolerance = 0.01):
+    collisions = []
+    for p1 in shape1:
+        for p2 in shape2:
+            if np.allclose(p1, p2,atol= tolerance):  # Check for exact overlap
+                collisions.append(tuple(p1))
+    if len(collisions) ==1:
+        print("Point Collision Detected")
+        return True
+    if len(collisions) == 2:
+        print("Edge Collision Detected")
+        return True
+    if len(collisions) == 3:
+        print("Face Collision Detected")
+        return True
+    return False
