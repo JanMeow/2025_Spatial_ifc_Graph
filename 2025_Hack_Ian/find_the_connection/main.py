@@ -1,13 +1,13 @@
-from pathlib import Path
 import ifcopenshell
-from utils import bfs_traverse, get_geometry_info, write_to_node, create_graph
-from intersection_test import get_planes, get_adjacent, get_direct_connection, loop_detecton
+from pathlib import Path
+from utils import  Graph, get_triangulated_planes
+from traversal import get_adjacent
+from collision import gjk
+import numpy as np
 
 
 ifc_folder = Path("data")/"ifc"
 ifc_folder.mkdir(parents=True, exist_ok=True)
-
-
 ifc_path = ifc_folder/"example1.ifc"
 
 
@@ -17,43 +17,38 @@ def main():
     print(model.schema)
 
     root = model.by_type("IfcProject")[0]
-    proxy1 = model.by_guid("3hP3TktpfEHuFubiINX0a$")
-    proxy2 = model.by_guid("3o14as6$P1GQOeedYgIq1J")
-
-    # Get geometric information from 
-    # print(get_geometry_info(proxy1, get_global=True))
-
-    # Create a graph
-    graph = create_graph(root)
+    guid1 = "3hP3TktpfEHuFubiINX0a$"
+    guid2 = "3o14as6$P1GQOeedYgIq1J"
+    proxy1 = model.by_guid(guid1)
+    proxy2 = model.by_guid(guid2)
 
 
-    # test for intersectionrs
-    # result = get_intersection(proxy1, proxy2)
-    # print(result)
+    # # Create a graph
+    graph = Graph.create(root)
+    # Establish BVH Tree for the nodes 
+    graph.build_bvh()
 
-    # Get triangulated equation
-    # get_planes(proxy1, get_global=True)
-    adj_nodes = get_adjacent(model, proxy1)
-    print(adj_nodes)
+    node1 = graph.node_dict[guid1]
+    node2 = graph.node_dict[guid2]
+    queries = graph.bvh_query(node1.geom_info["bbox"])
+    adjs = get_adjacent(model, proxy1)
 
 
     # Build the graph based on relationship
-    for key, node in graph.node_dict.items():
-        entity = model.by_guid(key)
-        adj_nodes_guid = get_adjacent(model, entity)
-        node.near = [graph.node_dict[guid] for guid in adj_nodes_guid]
-
-
+    for node in graph.node_dict.values():
+        if node.geom_info != None:
+            node.near = [graph.node_dict[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
+                         if guid != node.guid]
 
 
     # Show the direct connection
-    # print(get_direct_connection(proxy1, graph)[0])
+    # print(graph.get_connections(guid2))
 
-    print("start loop detection")
-    print(loop_detecton(graph, "3hP3TktpfEHuFubiINX0a$", max_depth=3))
-    print("done")
+    # Detecting Corner around using loop detection
+    # print(graph.loop_detection(guid1, max_depth=3))
 
-
+    # Test Narrow Phase Collision Detection
+    gjk_test = graph.gjk_query(guid1, guid2)
 
 
 

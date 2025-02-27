@@ -1,6 +1,6 @@
 # Ignore virtual environments
 venv/
-*/venv/
+**/venv/
 
 # Ignore Python cache files
 __pycache__/
@@ -15,3 +15,8 @@ Thumbs.db  # Windows
 # Ignore IDE/editor settings
 .vscode/
 .idea/
+**/.vscode/
+**/.idea/
+
+# Ignore Environmental Variables
+**/var.py
