@@ -70,6 +70,17 @@ def get_triangulated_planes(node):
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
+def connect_same_type(node):
+  memory = set()
+  _type = node.geom_type
+  stack = [node]
+  while stack:
+    current = stack.pop()
+    memory.add(current.guid)
+    for node_n in current.near:
+      if node_n.geom_type == _type and node_n.guid not in memory:
+        stack.append(node_n)
+  return list(memory)
 def write_to_node(current_node):
   if current_node != None:
     geom_infos = get_geometry_info(current_node, get_global = True)
@@ -131,6 +142,9 @@ class Graph:
   def loop_detection(self, guid, max_depth):
     node = self.node_dict[guid]
     return loop_detecton(node, max_depth)
+  def connected_same_type(self, guid):
+    node = self.node_dict[guid]
+    return connect_same_type(node)
   def gjk_query(self,guid1, guid2):
     node1 = self.node_dict[guid1]
     node2 = self.node_dict[guid2]
@@ -146,8 +160,6 @@ class Graph:
                 print("3D Collision Detected")
               else:
                 print("No Collision")
-                # print(f"[Collision Detected] {node1.name} and {node2.name}")
-                # print(f"Between plane{plane1} and {plane2}")
                 # collisions.add(tuple(map(tuple,plane1)))
                 # collisions.add(tuple(map(tuple,plane2)))
     return collisions

@@ -47,7 +47,7 @@ def envelop(bbox1, bbox2):
     b2 = np.all(bbox1[0]<= bbox2[0]) and np.all(bbox1[1]>=bbox2[1])
     return b1 or b2
 # ====================================================================
-# Narrow Phase Collision Detection
+# Narrow Phase Collision Detection1: GJK
 # ====================================================================
 # 0.Initial Direction to avoide degenerate
 def compute_centroid(shape):
@@ -59,8 +59,8 @@ def initial_direction_from_centroids(shape1, shape2):
     direction = centroid1 - centroid2
     
     if np.allclose(direction, 0, atol=1e-6):  
-        bbox_min = np.min(shape, axis=0)
-        bbox_max = np.max(shape, axis=0)
+        bbox_min = np.min(shape1, axis=0)
+        bbox_max = np.max(shape1, axis=0)
         return bbox_max - bbox_min  # Default fallback
 
     return direction
@@ -119,7 +119,8 @@ def gjk(shape1, shape2, max_iter = 20):
         simplex.append(new_pt)
         if contain_origin(simplex, direction):
             return True 
-    print(f"GJK did not converge")
+    print(f"GJK did not converge trying miniB")
+    mini_BVH(shape1, shape2)
     return False
 # Note that if the input are the same, meaning two triangle are overlapping
 # GJK might not converge so need to add a check before that
@@ -139,3 +140,19 @@ def check_tolerance(shape1, shape2, tolerance = 0.01):
         print("Face Collision Detected")
         return True
     return False
+# Second Narrow Phase Collision Detection
+# MiniB, since all the mesh are triangulated, we could also test which triangle intersects using its
+# smaller bounding box
+def mini_BVH(shape1, shape2):
+    bbox1 = get_bbox(shape1)
+    bbox2 = get_bbox(shape2)
+    if intersect(bbox1,bbox2):
+        print("intersection at triangle")
+    else:
+        print("No intersection")
+    return 
+# ====================================================================
+# Narrow Phase Collision Detection1: SAT
+# SAT works faster with triangle
+# ====================================================================
+def SAT(shape1, shape2):    return

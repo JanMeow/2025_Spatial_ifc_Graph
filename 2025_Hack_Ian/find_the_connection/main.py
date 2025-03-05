@@ -40,7 +40,7 @@ def main():
             node.near = [graph.node_dict[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
                          if guid != node.guid]
 
-
+    
     # Show the direct connection
     # print(graph.get_connections(guid2))
 
@@ -48,9 +48,12 @@ def main():
     # print(graph.loop_detection(guid1, max_depth=3))
 
     # Test Narrow Phase Collision Detection
-    gjk_test = graph.gjk_query(guid1, guid2)
+    # gjk_test = graph.gjk_query(guid1, guid2)
 
-
+    # Get all connected same type 
+    result = graph.connected_same_type(guid1)
+    print(result)
+    print([graph.node_dict[guid].geom_type for guid in result])
 
 if __name__ == "__main__":
     main()
