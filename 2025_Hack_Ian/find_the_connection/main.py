@@ -22,7 +22,6 @@ def main():
     proxy1 = model.by_guid(guid1)
     proxy2 = model.by_guid(guid2)
 
-
     # # Create a graph
     graph = Graph.create(root)
     # Establish BVH Tree for the nodes 
@@ -51,9 +50,7 @@ def main():
     # gjk_test = graph.gjk_query(guid1, guid2)
 
     # Get all connected same type 
-    result = graph.connected_same_type(guid1)
-    print(result)
-    print([graph.node_dict[guid].geom_type for guid in result])
+    # result = graph.connected_same_type(guid1)
 
 if __name__ == "__main__":
     main()

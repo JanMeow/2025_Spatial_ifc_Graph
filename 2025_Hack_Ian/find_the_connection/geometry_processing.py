@@ -19,8 +19,20 @@ Task for the week:
 2. Perform boolean operation using the libraty
 
 """
+# ====================================================================
+# 3D Boolean Operations
+# ====================================================================
 def boolean_union(shape1, shape2):
     if collision.intersect(shape1, shape2):
         return np.vstack((shape1, shape2))
     print("Shapes are not intersecting")
     return
+
+def split_shape(shape, axis):
+    
+    return shape[:len(shape)//2], shape[len(shape)//2:]
+
+
+# ====================================================================
+# 2D Boolean Operations
+# ====================================================================

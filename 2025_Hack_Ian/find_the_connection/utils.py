@@ -121,6 +121,7 @@ class Graph:
   def bvh_query(self, bbox):
     collisions = []
     if self.bvh == None:
+      print("BVH not built, building now")
       self.build_bvh()
     stack = [self.bvh]
     while stack:
