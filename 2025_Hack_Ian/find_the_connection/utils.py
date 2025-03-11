@@ -3,7 +3,9 @@ import ifcopenshell
 import ifcopenshell.geom
 import ifcopenshell.util.shape
 import collision
+import math
 from traversal import bfs_traverse, loop_detecton
+from geometry_processing import decompose_2D, angle_between
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -70,9 +72,43 @@ def get_triangulated_planes(node):
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
+def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None):
+  """
+    Condition of merging for two nodes
+    1. Same Geometry Type
+    2. Same Z location to start
+    3. Same height and width base curve
+    4. Same direction of traversal 
+    5. Same Psets
+  """
+  v2,l2 = decompose_2D(node)
+  bbox1 = geom_info["bbox"]
+  bbox2 = node.geom_info["bbox"]
+  height1 = bbox1[1][2] - bbox1[0][2]
+  height2 = bbox2[1][2] - bbox2[0][2]
+  angle = angle_between(v1[1], v2[1])
+  tolerance = 0.05
+
+  conditions =[
+    geom_type == node.geom_type,
+    bbox1[0][2] == bbox2[0][2],
+    height1 == height2,
+    l1[1] == l2[1],
+    angle < 0.05 or angle - math.pi < 0.05]
+  
+  # if all(conditions):
+  #   return True
+  # else:
+  #   return False
+  
+  for condition in conditions:
+    if not condition:
+      return False
+  return True
 def connect_same_type(node):
   memory = set()
   _type = node.geom_type
+  v,l = decompose_2D(node)
   stack = [node]
   while stack:
     current = stack.pop()

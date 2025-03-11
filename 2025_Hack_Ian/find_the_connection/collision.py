@@ -42,10 +42,17 @@ def get_bbox(bboxs):
     _min = np.min(arr, axis = 0)
     _max = np.max(arr, axis = 0)
     return np.vstack((_min,_max))
+def get_center(bbox):
+    return (bbox[0] + bbox[1])/2
 def envelop(bbox1, bbox2):
     b1 = np.all(bbox1[0]>=bbox2[0]) and np.all(bbox1[1]<=bbox2[1]) 
     b2 = np.all(bbox1[0]<= bbox2[0]) and np.all(bbox1[1]>=bbox2[1])
     return b1 or b2
+# ====================================================================
+# Mid Phase Collision Detection: OOBB Object Oritend BoundingBox
+# ====================================================================
+
+
 # ====================================================================
 # Narrow Phase Collision Detection1: GJK
 # ====================================================================

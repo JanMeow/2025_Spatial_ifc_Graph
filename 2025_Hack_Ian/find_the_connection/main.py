@@ -1,15 +1,15 @@
 import ifcopenshell
+import numpy as np
 from pathlib import Path
 from utils import  Graph, get_triangulated_planes
 from traversal import get_adjacent
 from collision import gjk
-import numpy as np
-
-
+from export import create_ifc_for_partial_model
+from geometry_processing import decompose_2D, angle_between
+# ====================================================================
 ifc_folder = Path("data")/"ifc"
 ifc_folder.mkdir(parents=True, exist_ok=True)
-ifc_path = ifc_folder/"example1.ifc"
-
+ifc_path = ifc_folder/"sample_for_test.ifc"
 
 def main():
     # Read the IFC file:
@@ -17,27 +17,31 @@ def main():
     print(model.schema)
 
     root = model.by_type("IfcProject")[0]
-    guid1 = "3hP3TktpfEHuFubiINX0a$"
-    guid2 = "3o14as6$P1GQOeedYgIq1J"
+    guid1 = "0js3D2vQP9PeLECr8TXDwW"
     proxy1 = model.by_guid(guid1)
+
+    guid2 = "0c1Z1o21j1gv0FGFOOBKRv"
     proxy2 = model.by_guid(guid2)
 
-    # # Create a graph
-    graph = Graph.create(root)
-    # Establish BVH Tree for the nodes 
-    graph.build_bvh()
+    create_ifc_for_partial_model(proxy2, model, file_path = "data/ifc/new_model.ifc")
 
-    node1 = graph.node_dict[guid1]
-    node2 = graph.node_dict[guid2]
-    queries = graph.bvh_query(node1.geom_info["bbox"])
-    adjs = get_adjacent(model, proxy1)
+    # # # Create a graph
+    # graph = Graph.create(root)
+    # # Establish BVH Tree for the nodes 
+    # graph.build_bvh()
+
+    # node1 = graph.node_dict[guid1]
+    # queries = graph.bvh_query(node1.geom_info["bbox"])
+    # print(queries)
+
+
 
 
     # Build the graph based on relationship
-    for node in graph.node_dict.values():
-        if node.geom_info != None:
-            node.near = [graph.node_dict[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
-                         if guid != node.guid]
+    # for node in graph.node_dict.values():
+    #     if node.geom_info != None:
+    #         node.near = [graph.node_dict[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
+    #                      if guid != node.guid]
 
     
     # Show the direct connection
