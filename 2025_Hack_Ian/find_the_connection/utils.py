@@ -22,24 +22,26 @@ def get_geometry_info(entity, get_global = False):
         "faceVertexIndices": None,
         "bbox": None
       }
-      settings = ifcopenshell.geom.settings()
-      shape = ifcopenshell.geom.create_shape(settings, entity)
-      result["T_matrix"] = ifcopenshell.util.shape.get_shape_matrix(shape)
-      result["vertex"]  = np.around(ifcopenshell.util.shape.get_vertices(shape.geometry),2)
-      result["faceVertexIndices"] = ifcopenshell.util.shape.get_faces(shape.geometry)
+      try:
+        settings = ifcopenshell.geom.settings()
+        shape = ifcopenshell.geom.create_shape(settings, entity)
+        result["T_matrix"] = ifcopenshell.util.shape.get_shape_matrix(shape)
+        result["vertex"]  = np.around(ifcopenshell.util.shape.get_vertices(shape.geometry),2)
+        result["faceVertexIndices"] = ifcopenshell.util.shape.get_faces(shape.geometry)
 
-      if get_global:
-        vertex = result["vertex"]
-        T_matrix = result["T_matrix"]
-        ones = np.ones(shape = (vertex.shape[0],1))
-        stacked = np.hstack((vertex, ones))
-        global_coor = stacked@ T_matrix.T
-        global_coor = np.around(global_coor[:,0:-1],2)
-        result["vertex"] = global_coor
+        if get_global:
+          vertex = result["vertex"]
+          T_matrix = result["T_matrix"]
+          ones = np.ones(shape = (vertex.shape[0],1))
+          stacked = np.hstack((vertex, ones))
+          global_coor = stacked@ T_matrix.T
+          global_coor = np.around(global_coor[:,0:-1],2)
+          result["vertex"] = global_coor
 
-      result["bbox"] = get_bbox(result["vertex"])
-      return result
-  return None
+        result["bbox"] = get_bbox(result["vertex"])
+        return result
+      except:
+        return None
 def get_triangulated_equation(A, B, C):
     # Compute vectors V1 and V2
     V1 = B - A
@@ -72,14 +74,15 @@ def get_triangulated_planes(node):
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
-def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None):
+def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, tolerance = 0.01):
   """
     Condition of merging for two nodes
     1. Same Geometry Type
     2. Same Z location to start
-    3. Same height and width base curve
-    4. Same direction of traversal 
-    5. Same Psets
+    3. Same height a
+    4. Same width base curve
+    6. Same direction of traversal 
+    6. Same Psets #not done yet
   """
   v2,l2 = decompose_2D(node)
   bbox1 = geom_info["bbox"]
@@ -87,34 +90,28 @@ def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None):
   height1 = bbox1[1][2] - bbox1[0][2]
   height2 = bbox2[1][2] - bbox2[0][2]
   angle = angle_between(v1[1], v2[1])
-  tolerance = 0.05
 
   conditions =[
     geom_type == node.geom_type,
     bbox1[0][2] == bbox2[0][2],
-    height1 == height2,
-    l1[1] == l2[1],
-    angle < 0.05 or angle - math.pi < 0.05]
+    abs(height1 - height2) < tolerance,
+    abs(l1[0] - l2[0]) < tolerance,
+    angle < tolerance or angle - math.pi < tolerance]
   
-  # if all(conditions):
-  #   return True
-  # else:
-  #   return False
-  
-  for condition in conditions:
-    if not condition:
-      return False
-  return True
-def connect_same_type(node):
+  if all(conditions):
+    return True
+  return False
+def merge(node):
   memory = set()
   _type = node.geom_type
+  geom_info = node.geom_info
   v,l = decompose_2D(node)
   stack = [node]
   while stack:
     current = stack.pop()
     memory.add(current.guid)
     for node_n in current.near:
-      if node_n.geom_type == _type and node_n.guid not in memory:
+      if node_n.guid not in memory and merge_test(node_n, _type, geom_info, v, l):
         stack.append(node_n)
   return list(memory)
 def write_to_node(current_node):
@@ -179,9 +176,9 @@ class Graph:
   def loop_detection(self, guid, max_depth):
     node = self.node_dict[guid]
     return loop_detecton(node, max_depth)
-  def connected_same_type(self, guid):
+  def merge_adjacent(self, guid):
     node = self.node_dict[guid]
-    return connect_same_type(node)
+    return merge(node)
   def gjk_query(self,guid1, guid2):
     node1 = self.node_dict[guid1]
     node2 = self.node_dict[guid2]

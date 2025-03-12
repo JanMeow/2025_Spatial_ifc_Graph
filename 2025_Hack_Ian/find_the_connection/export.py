@@ -41,26 +41,19 @@ def set_property (model, entity, property_name,property_value, property_type = "
     )
   return entity
 def create_ifc_for_partial_model(entity, model, schema = "IFC4", write_file = True, file_path = "new_model.ifc", save_props = True):
-
-
   # Create_basic_skeleton
   new_model, storey = create_basic_project_strcuture(entity, schema = "IFC4", relationship = "IfcRelAggregates")
-
   partial_grapth = model.traverse(entity)
-
-
   # Copying the entities into an object and linking it to the storey level
   for i,node in enumerate(partial_grapth):
     copied_entity = new_model.add(node)
     if i == 0:
       root_node = copied_entity
-
     # Traverse does not contain the custom property, so we need to get those also
     if save_props and hasattr(node, "IsDefinedBy"):
       props = node.IsDefinedBy
       for prop in props:
         new_model.add(prop)
-
   # Linking to the storey level
   new_model.create_entity(
     "IfcRelContainedInSpatialStructure",

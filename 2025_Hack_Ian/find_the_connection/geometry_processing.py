@@ -1,4 +1,5 @@
 import numpy as np
+import trimesh
 import collision
 """
 This module contains the boolean operations that are used for merging collision shapes
@@ -54,11 +55,21 @@ def angle_between(v1, v2):
 # ====================================================================
 # 3D Boolean Operations
 # ====================================================================
-def boolean_union(shape1, shape2):
-    if collision.intersect(shape1, shape2):
-        return np.vstack((shape1, shape2))
-    print("Shapes are not intersecting")
-    return
+def boolean_3D(node1, node2, type ="union"):
+    geom_info1 = node1.geom_info
+    geom_info2 = node2.geom_info
+
+    if collision.intersect(geom_info1["bbox"], geom_info2["bbox"]):
+        mesh1 = trimesh.Trimesh(vertices =geom_info1["vertex"], faces =geom_info1["faceVertexIndices"])
+        mesh2 = trimesh.Trimesh(vertices =geom_info2["vertex"], faces =geom_info2["faceVertexIndices"])
+
+        if type == "union":
+            result = mesh1.union(mesh2)
+
+    return np.array(result.vertices, dtype=np.float32),np.array(result.faces, dtype=np.uint32)
+def showMesh(v,f):
+   mesh = trimesh.Trimesh(vertices =v, faces =f)
+   mesh.show()
 # ====================================================================
 # 2D Boolean Operations
 # ====================================================================
