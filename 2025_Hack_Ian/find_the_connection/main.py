@@ -37,14 +37,12 @@ def main():
 
 
 
-
     # Build the graph based on relationship
     for node in graph.node_dict.values():
         if node.geom_info != None:
             node.near = [graph.node_dict[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
                          if guid != node.guid]
 
-    
     # Show the direct connection
     # print(graph.get_connections(guid1))
 
@@ -56,10 +54,22 @@ def main():
 
     # Get all connected same type => Wall merging
     result = graph.merge_adjacent(guid1)
-    print(result)
     result = [graph.node_dict[guid] for guid in result]
-    bool_result = boolean_3D(result[0], result[1], type="union")
-    showMesh(bool_result[0], bool_result[1])
+    queries = [(graph.node_dict[guid].geom_info["vertex"], graph.node_dict[guid].geom_info["faceVertexIndices"]) for guid in queries]
+    bool_result = [boolean_3D(result[0], result[1], type="union")]
+    showMesh(queries)
+
+
+    # # Create multiple meshes
+    # sphere = trimesh.creation.icosphere(radius=1)
+    # cube = trimesh.creation.box(extents=[2, 2, 2]).apply_translation([3, 0, 0])  # Move cube to avoid overlap
+
+    # # Create a scene and add multiple meshes
+    # scene = trimesh.Scene([sphere, cube])
+
+    # # Show the scene with both meshes
+    # scene.show()
+
 
     # create_ifc_for_partial_model(proxy1, model, file_path = export_path)
 

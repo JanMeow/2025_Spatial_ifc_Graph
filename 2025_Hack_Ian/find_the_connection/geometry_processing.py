@@ -53,6 +53,17 @@ def angle_between(v1, v2):
   v2_u = get_unit_vector(v2)
   return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 # ====================================================================
+# Display Functions
+# ====================================================================
+def clipping_plane():
+   return
+def showMesh(vf_list):
+  meshes = [trimesh.Trimesh(vertices =v, faces =f) for v,f in vf_list]
+  scene = trimesh.Scene(meshes)
+  scene.show()
+def colour_palette():
+   return
+# ====================================================================
 # 3D Boolean Operations
 # ====================================================================
 def boolean_3D(node1, node2, type ="union"):
@@ -67,9 +78,6 @@ def boolean_3D(node1, node2, type ="union"):
             result = mesh1.union(mesh2)
 
     return np.array(result.vertices, dtype=np.float32),np.array(result.faces, dtype=np.uint32)
-def showMesh(v,f):
-   mesh = trimesh.Trimesh(vertices =v, faces =f)
-   mesh.show()
 # ====================================================================
 # 2D Boolean Operations
 # ====================================================================
