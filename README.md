@@ -37,7 +37,7 @@ Find the connection and componet matching uses different venv and have different
 
 ```
 cd existing_repo
-git remote add origin [https://gitlab.ti.bfh.ch/IdB/DF/projects/dokwood/auto-dok.git](https://github.com/JanMeow/2025_Spatial_ifc_Graph.git)
+git remote add origin https://github.com/JanMeow/2025_Spatial_ifc_Graph.git
 git branch -M main
 git push -uf origin main
 ```
