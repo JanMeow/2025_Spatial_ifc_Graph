@@ -1,6 +1,8 @@
 🚀 2025 Hackathon – "Find the Connection"
+
+
 🔹 Introduction
-Welcome! 👋 This repository contains two major components:
+Hey there!!! This repository contains two major components:
 
 Find the Connection – Graph-based IFC processing & collision detection
 Component Matching – AI-powered product search using a RAG (Retrieval-Augmented Generation) approach
