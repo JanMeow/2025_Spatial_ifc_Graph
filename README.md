@@ -4,9 +4,28 @@
 
 ## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Hey there ! 
+This repository contained two major componenets 
+1. Find the connection
+2. Component Matching
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+This is a continuation and publcation for the codes I used in the winning proposal for the Hackerthon 2025 "Find the Connection".
+Many things are still being developed but I am happy to hear your feedback and also learn from each other ! 
+
+
+**Find the connection**
+Find the Connecton contains script that turns input IFC model into a graph data strcuture which is simutaneously an AABB(Axis Aligned Bounding Box) BVH tree for boardphase collision detection
+it uses Corner connection which underneath the hood is a DFS algoruthm for loop detection to verify if wall nodes can traverse back to themselves in 3-4 or arbitary k steps
+Once collision is confirmed, the collision could be narroed down using a GJK algorithm
+It also contains trimesh library for boolean operations on the meshes if collision is detected, underneath it is using manifold3d for the operations.
+Currently, I am still working on a mid-phase collisoon detection using OOBB (Object Oriented Bounding Box) test and also an implementation of SAT(Seperation Axis Theorem) for fun  hahaha! 
+
+**Component Matching**
+The Component Matching Catalog uses a RAG apporach. It turns the query and the bauteile katalog into embeddings. This is currently still under development. 
+It currently comprises of a few steps, reading the text from a pdf, summariasing it using a language model for keywords extraction, then turning these keywords into embedding 
+Finally, storing it into a a vector DB. 
+Some future steps include the training of a Segmentation Model on catalog detials for extracting visual information from PDFs for deeper insights
+or using a Graph Database to direct query using  Neo4j, embedding connection data as an index.
 
 ## Add your files
 
@@ -18,31 +37,6 @@ cd existing_repo
 git remote add origin https://gitlab.ti.bfh.ch/IdB/DF/projects/dokwood/auto-dok.git
 git branch -M main
 git push -uf origin main
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.ti.bfh.ch/IdB/DF/projects/dokwood/auto-dok/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
 
 # Editing this README
 
@@ -87,7 +81,6 @@ You can also document commands to lint the code or run tests. These steps help t
 Show your appreciation to those who have contributed to the project.
 
 ## License
-For open source projects, say how it is licensed.
-
+MIT license
 ## Project status
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
