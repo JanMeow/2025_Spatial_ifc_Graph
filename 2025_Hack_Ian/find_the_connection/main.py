@@ -59,18 +59,6 @@ def main():
     bool_result = [boolean_3D(result[0], result[1], type="union")]
     showMesh(queries)
 
-
-    # # Create multiple meshes
-    # sphere = trimesh.creation.icosphere(radius=1)
-    # cube = trimesh.creation.box(extents=[2, 2, 2]).apply_translation([3, 0, 0])  # Move cube to avoid overlap
-
-    # # Create a scene and add multiple meshes
-    # scene = trimesh.Scene([sphere, cube])
-
-    # # Show the scene with both meshes
-    # scene.show()
-
-
     # create_ifc_for_partial_model(proxy1, model, file_path = export_path)
 
 
