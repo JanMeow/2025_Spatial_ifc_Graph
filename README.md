@@ -27,6 +27,9 @@ Finally, storing it into a a vector DB.
 Some future steps include the training of a Segmentation Model on catalog detials for extracting visual information from PDFs for deeper insights
 or using a Graph Database to direct query using  Neo4j, embedding connection data as an index.
 
+**ATTENTION**
+Find the connection and componet matching uses different venv and have different requirement.txt.
+
 ## Add your files
 
 - [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
