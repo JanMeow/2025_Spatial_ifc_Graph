@@ -1,7 +1,7 @@
 🚀 2025 Hackathon – "Find the Connection"
 
 
-🔹 Introduction
+Introduction
 Hey there!!! This repository contains two major components:
 
 Find the Connection – Graph-based IFC processing & collision detection
@@ -15,14 +15,13 @@ This module converts an IFC model into a graph data structure that simultaneousl
 Key Features
 🔹 Corner Connection Analysis – Uses a DFS-based loop detection algorithm to verify if wall nodes can traverse back to themselves in 3-4 steps or arbitrary k-steps.
 🔹 Broad-Phase Collision Detection – Uses Axis-Aligned Bounding Box (AABB) BVH trees for efficient intersection testing.
-🔹 Narrow-Phase Collision Detection –
-
-GJK Algorithm (Gilbert-Johnson-Keerthi) for precise collision refinement.
-Boolean Operations on Trimesh powered by Manifold3D for deeper geometric verification.
+🔹 Narrow-Phase Collision Detection –GJK Algorithm (Gilbert-Johnson-Keerthi) for precise collision refinement.
+🔹 Boolean Operations on Trimesh powered by Manifold3D for deeper geometric verification.
 🔹 Visualization – Uses PyGlet for an interactive 3D mesh display.
 🚧 Future Development
 ✅ Mid-Phase Collision Detection – Implementing Oriented Bounding Box (OOBB) testing.
 ✅ Separating Axis Theorem (SAT) Implementation – Just for fun, because why not? 😆
+✅ Visualizing the graph on Neo4j
 
 📌 Component Matching – AI-Driven Product Search
 The Component Matching Catalog enables AI-powered retrieval & matching of construction components.
