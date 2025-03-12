@@ -18,6 +18,8 @@ Find the Connecton contains script that turns input IFC model into a graph data 
 it uses Corner connection which underneath the hood is a DFS algoruthm for loop detection to verify if wall nodes can traverse back to themselves in 3-4 or arbitary k steps
 Once collision is confirmed, the collision could be narroed down using a GJK algorithm
 It also contains trimesh library for boolean operations on the meshes if collision is detected, underneath it is using manifold3d for the operations.
+The visualization relies on Pyglett to open an interative 3D mesh displaying window.
+
 Currently, I am still working on a mid-phase collisoon detection using OOBB (Object Oriented Bounding Box) test and also an implementation of SAT(Seperation Axis Theorem) for fun  hahaha! 
 
 **Component Matching**
