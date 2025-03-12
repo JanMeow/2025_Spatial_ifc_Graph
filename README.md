@@ -1,36 +1,66 @@
-# 2025 Hackerthon
+🚀 2025 Hackathon – "Find the Connection"
+🔹 Introduction
+Welcome! 👋 This repository contains two major components:
 
+Find the Connection – Graph-based IFC processing & collision detection
+Component Matching – AI-powered product search using a RAG (Retrieval-Augmented Generation) approach
+This project is a continuation of my winning proposal from the 2025 Hackathon: "Find the Connection" 🏆.
+Many features are still being actively developed, and I’d love to hear your feedback, suggestions, and contributions! 🚀
 
+📌 Find the Connection – IFC to Graph Conversion & Collision Detection
+This module converts an IFC model into a graph data structure that simultaneously acts as an AABB BVH tree (Broad-Phase Hierarchical Collision Detection).
 
-## Getting started
+Key Features
+🔹 Corner Connection Analysis – Uses a DFS-based loop detection algorithm to verify if wall nodes can traverse back to themselves in 3-4 steps or arbitrary k-steps.
+🔹 Broad-Phase Collision Detection – Uses Axis-Aligned Bounding Box (AABB) BVH trees for efficient intersection testing.
+🔹 Narrow-Phase Collision Detection –
 
-Hey there ! 
-This repository contained two major componenets 
-1. Find the connection
-2. Component Matching
+GJK Algorithm (Gilbert-Johnson-Keerthi) for precise collision refinement.
+Boolean Operations on Trimesh powered by Manifold3D for deeper geometric verification.
+🔹 Visualization – Uses PyGlet for an interactive 3D mesh display.
+🚧 Future Development
+✅ Mid-Phase Collision Detection – Implementing Oriented Bounding Box (OOBB) testing.
+✅ Separating Axis Theorem (SAT) Implementation – Just for fun, because why not? 😆
 
-This is a continuation and publication for the codes I used in the winning proposal for the Hackerthon 2025 "Find the Connection".
-Many new features are still being developed but I am happy to hear your feedback and also learn from each other ! 
+📌 Component Matching – AI-Driven Product Search
+The Component Matching Catalog enables AI-powered retrieval & matching of construction components.
 
+Key Features
+🔹 RAG-Based Matching – Converts query + component catalog into vector embeddings.
+🔹 Text Processing Pipeline
 
-**Find the connection**
-Find the Connecton contains script that turns input IFC model into a graph data strcuture which is simutaneously an AABB(Axis Aligned Bounding Box) BVH tree for boardphase collision detection
-it uses Corner connection which underneath the hood is a DFS algoruthm for loop detection to verify if wall nodes can traverse back to themselves in 3-4 or arbitary k steps
-Once collision is confirmed, the collision could be narroed down using a GJK algorithm
-It also contains trimesh library for boolean operations on the meshes if collision is detected, underneath it is using manifold3d for the operations.
-The visualization relies on Pyglett to open an interative 3D mesh displaying window.
+Extracts text from PDF catalogs (using PdfMiner).
+Summarizes and extracts keywords using a language model (LLM).
+Converts keywords into vector embeddings for similarity search.
+🔹 Efficient Search & Retrieval – Stores embeddings in ChromaDB (vector database) for fast lookups.
+🚧 Future Plans
+✅ Segmentation Model for Visual Analysis – Extract visual details from PDFs for deeper insights.
+✅ Graph Database Integration – Use Neo4j for structured querying, embedding connection data as an index.
 
-Currently, I am still working on a mid-phase collisoon detection using OOBB (Object Oriented Bounding Box) test and also an implementation of SAT(Seperation Axis Theorem) for fun  hahaha! 
+⚠️ Important Note: Virtual Environments
+Find the Connection and Component Matching use different Python virtual environments and have separate requirements.txt files.
+Make sure to activate the correct environment before running the respective module:
 
-**Component Matching**
-The Component Matching Catalog uses a RAG apporach. It turns the query and the bauteile katalog into embeddings. This is currently still under development. 
-It currently comprises of a few steps, reading the text from a pdf, summariasing it using a language model for keywords extraction, then turning these keywords into embedding 
-Finally, storing it into a a vector DB. 
-Some future steps include the training of a Segmentation Model on catalog detials for extracting visual information from PDFs for deeper insights
-or using a Graph Database to direct query using  Neo4j, embedding connection data as an index.
+bash
+Kopieren
+Bearbeiten
+# Find the Connection
+python -m venv venv_connection
+source venv_connection/bin/activate  # (Linux/macOS)
+venv_connection\Scripts\activate     # (Windows)
+pip install -r requirements.txt
 
-**ATTENTION**
-Find the connection and componet matching uses different venv and have different requirement.txt.
+# Component Matching
+python -m venv venv_matching
+source venv_matching/bin/activate  # (Linux/macOS)
+venv_matching\Scripts\activate     # (Windows)
+pip install -r requirements_matching.txt
+💡 Contributing & Feedback
+This is an open-source project, and I’d love to get feedback from the community!
+If you have any ideas, feature suggestions, or bug reports, feel free to:
+🔹 Open an Issue 📌
+🔹 Submit a Pull Request 💻
+🔹 Reach out to me! 📩
 
 ## Add your files
 
@@ -47,27 +77,11 @@ git push -uf origin main
 
 When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
 
-## Suggestions for a good README
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
 
 ## Installation
 Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
 ## Support
 Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
