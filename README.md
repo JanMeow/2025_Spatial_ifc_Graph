@@ -9,8 +9,8 @@ This repository contained two major componenets
 1. Find the connection
 2. Component Matching
 
-This is a continuation and publcation for the codes I used in the winning proposal for the Hackerthon 2025 "Find the Connection".
-Many things are still being developed but I am happy to hear your feedback and also learn from each other ! 
+This is a continuation and publication for the codes I used in the winning proposal for the Hackerthon 2025 "Find the Connection".
+Many new features are still being developed but I am happy to hear your feedback and also learn from each other ! 
 
 
 **Find the connection**
