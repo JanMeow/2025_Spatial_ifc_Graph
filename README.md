@@ -42,10 +42,8 @@ Converts keywords into vector embeddings for similarity search.
 ⚠️ Important Note: Virtual Environments
 Find the Connection and Component Matching use different Python virtual environments and have separate requirements.txt files.
 Make sure to activate the correct environment before running the respective module:
-
-For windows,
 ```
-go into the specific component directory
+#Go into the specific component directory
 pip install requirements.txt
 pip venv/Scripts/Activate.ps1
 ```
