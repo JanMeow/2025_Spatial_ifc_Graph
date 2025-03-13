@@ -17,6 +17,7 @@ Key Features
 🔹 Narrow-Phase Collision Detection –GJK Algorithm (Gilbert-Johnson-Keerthi) for precise collision refinement.
 🔹 Boolean Operations on Trimesh powered by Manifold3D for deeper geometric verification.
 🔹 Visualization – Uses PyGlet for an interactive 3D mesh display.
+
 🚧 Future Development
 ✅ Mid-Phase Collision Detection – Implementing Oriented Bounding Box (OOBB) testing.
 ✅ Separating Axis Theorem (SAT) Implementation – Just for fun, because why not? 😆
@@ -33,6 +34,7 @@ Extracts text from PDF catalogs (using PdfMiner).
 Summarizes and extracts keywords using a language model (LLM).
 Converts keywords into vector embeddings for similarity search.
 🔹 Efficient Search & Retrieval – Stores embeddings in ChromaDB (vector database) for fast lookups.
+
 🚧 Future Plans
 ✅ Segmentation Model for Visual Analysis – Extract visual details from PDFs for deeper insights.
 ✅ Graph Database Integration – Use Neo4j for structured querying, embedding connection data as an index.
@@ -40,6 +42,13 @@ Converts keywords into vector embeddings for similarity search.
 ⚠️ Important Note: Virtual Environments
 Find the Connection and Component Matching use different Python virtual environments and have separate requirements.txt files.
 Make sure to activate the correct environment before running the respective module:
+
+For windows,
+```
+go into the specific component directory
+pip install requirements.txt
+pip venv/Scripts/Activate.ps1
+```
 
 bash
 Kopieren
