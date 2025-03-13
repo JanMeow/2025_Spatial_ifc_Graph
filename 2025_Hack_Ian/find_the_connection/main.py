@@ -54,10 +54,12 @@ def main():
 
     # Get all connected same type => Wall merging
     result = graph.merge_adjacent(guid1)
+    print(result)
     result = [graph.node_dict[guid] for guid in result]
     queries = [(graph.node_dict[guid].geom_info["vertex"], graph.node_dict[guid].geom_info["faceVertexIndices"]) for guid in queries]
     bool_result = [boolean_3D(result[0], result[1], type="union")]
-    showMesh(queries)
+    showMesh(bool_result)
+    print("hahahaha")
 
     # create_ifc_for_partial_model(proxy1, model, file_path = export_path)
 
