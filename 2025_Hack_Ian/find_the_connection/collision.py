@@ -58,7 +58,26 @@ def envelop(bbox1, bbox2):
 # ====================================================================
 # Mid Phase Collision Detection: OOBB Object Oritend BoundingBox
 # ====================================================================
-
+"""
+Since the input are assumped to be convex hull
+we skip the calculation part of the convex hull
+we could either use PCA to calculate the main axis or iterate through the faces
+PCA could be faster but might not be the most precise.
+I will code both out
+"""
+def get_face_normal(face):
+    v1 = face[1] - face[0]
+    v2 = face[2] - face[0]
+    return np.cross(v1,v2)
+def convex_hull_best_normal(faces, vertex):
+    lowest_var = 10000000
+    for face in faces:
+        normal = get_face_normal(face)
+        projection = np.dot(vertex, normal)
+        var = np.var(projection)
+        if var<= lowest_var:
+            best_normal = normal
+    return
 
 # ====================================================================
 # Narrow Phase Collision Detection1: GJK

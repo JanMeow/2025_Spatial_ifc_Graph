@@ -49,8 +49,14 @@ def main():
     # Get all connected same type
     result = graph.merge_adjacent(guid2)
     print(result)
+
+    # Dealing with roof geometry (inclinde geom)
+    nodeR = graph.node_dict["3XDvnQJPj2B9J$8W1k1bdZ"]
+    # obb = trimesh.bounds.oriented_bounds(nodeR.geom_info["vertex"])
+    # print(obb)
     # result = [graph.node_dict[guid] for guid in result]
     # bool_result = [boolean_3D(result[0], result[1], type="union")]
+
 
 
 
