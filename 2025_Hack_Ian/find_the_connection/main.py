@@ -3,13 +3,9 @@ import numpy as np
 from pathlib import Path
 from utils import  Graph, get_triangulated_planes
 from traversal import get_adjacent
-from collision import gjk
 from export import create_ifc_for_partial_model
 from geometry_processing import decompose_2D, angle_between, boolean_3D, showMesh
-from collections import Counter
 import trimesh
-
-
 
 # ====================================================================
 ifc_folder = Path("data")/"ifc"
@@ -24,6 +20,7 @@ def main():
 
     root = model.by_type("IfcProject")[0]
     guid1 = "0js3D2vQP9PeLECr8TXDwW"
+    guid2  = "1ExlF2Qnv1QA32hRKgFhNX"
     proxy1 = model.by_guid(guid1)
 
     # # Create a graph
@@ -33,9 +30,6 @@ def main():
 
     node1 = graph.node_dict[guid1]
     queries = graph.bvh_query(node1.geom_info["bbox"])
-    print(queries)
-
-
 
     # Build the graph based on relationship
     for node in graph.node_dict.values():
@@ -52,14 +46,15 @@ def main():
     # Test Narrow Phase Collision Detection
     # gjk_test = graph.gjk_query(guid1, guid2)
 
-    # Get all connected same type => Wall merging
-    result = graph.merge_adjacent(guid1)
+    # Get all connected same type
+    result = graph.merge_adjacent(guid2)
     print(result)
-    result = [graph.node_dict[guid] for guid in result]
-    queries = [(graph.node_dict[guid].geom_info["vertex"], graph.node_dict[guid].geom_info["faceVertexIndices"]) for guid in queries]
-    bool_result = [boolean_3D(result[0], result[1], type="union")]
-    showMesh(bool_result)
-    print("hahahaha")
+    # result = [graph.node_dict[guid] for guid in result]
+    # bool_result = [boolean_3D(result[0], result[1], type="union")]
+
+
+
+    # showMesh(bool_result)
 
     # create_ifc_for_partial_model(proxy1, model, file_path = export_path)
 

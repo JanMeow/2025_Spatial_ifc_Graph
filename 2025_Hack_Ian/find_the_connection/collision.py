@@ -35,8 +35,15 @@ def build_bvh(sorted_nodes):
     bvh.left = build_bvh(sorted_nodes[:mid])
     bvh.right = build_bvh(sorted_nodes[mid:])
     return bvh
-def intersect(bbox1,bbox2):
-    return np.all(bbox1[0] <= bbox2[1]) and np.all(bbox1[1] >= bbox2[0])
+def intersect(bbox1,bbox2, tolerance = 0.05):
+    c1 = bbox1[0] - bbox2[1] 
+    c2 = bbox1[1] - bbox2[0]
+    # Tolerance problem
+    m1 = np.isclose(c1, 0, atol=tolerance)
+    m2 = np.isclose(c2, 0, atol=tolerance)
+    c1[m1] = 0
+    c2[m2] = 0
+    return np.all(c1 <= 0) and np.all(c2 >= 0)
 def get_bbox(bboxs):
     arr = np.vstack(bboxs)
     _min = np.min(arr, axis = 0)

@@ -76,13 +76,18 @@ def get_triangulated_planes(node):
 # ====================================================================
 def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, tolerance = 0.01):
   """
-    Condition of merging for two nodes
+    Condition of merging for two nodes (wall)
     1. Same Geometry Type
     2. Same Z location to start
     3. Same height a
     4. Same width base curve
     6. Same direction of traversal 
     6. Same Psets #not done yet
+
+    roof:
+    #need OBB
+    1. test upper plane the same
+    2. same thickness
   """
   v2,l2 = decompose_2D(node)
   bbox1 = geom_info["bbox"]
@@ -91,29 +96,40 @@ def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, t
   height2 = bbox2[1][2] - bbox2[0][2]
   angle = angle_between(v1[1], v2[1])
 
-  conditions =[
-    geom_type == node.geom_type,
-    bbox1[0][2] == bbox2[0][2],
-    abs(height1 - height2) < tolerance,
-    abs(l1[0] - l2[0]) < tolerance,
-    angle < tolerance or angle - math.pi < tolerance]
-  
+  if geom_type == "IfcWall":
+    conditions =[
+      geom_type == node.geom_type,
+      abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
+      abs(height1 - height2) < tolerance,
+      abs(l1[0] - l2[0]) < tolerance,
+      angle < tolerance or angle - math.pi < tolerance]
+  elif geom_type == "IfcSlab":
+    conditions = [
+      geom_type == node.geom_type,
+      abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
+      abs(height1 - height2) < tolerance]
   if all(conditions):
     return True
   return False
 def merge(node):
-  memory = set()
+  memory= {
+    "T": set(),
+    "F": set()
+  }
   _type = node.geom_type
   geom_info = node.geom_info
   v,l = decompose_2D(node)
   stack = [node]
   while stack:
     current = stack.pop()
-    memory.add(current.guid)
+    memory["T"].add(current.guid)
     for node_n in current.near:
-      if node_n.guid not in memory and merge_test(node_n, _type, geom_info, v, l):
-        stack.append(node_n)
-  return list(memory)
+      if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
+        if merge_test(node_n, _type, geom_info, v, l):
+          stack.append(node_n)
+        else:
+          memory["F"].add(node_n.guid)
+  return list(memory["T"])
 def write_to_node(current_node):
   if current_node != None:
     geom_infos = get_geometry_info(current_node, get_global = True)
