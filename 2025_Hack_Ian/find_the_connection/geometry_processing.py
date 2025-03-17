@@ -1,6 +1,5 @@
 import numpy as np
 import trimesh
-import collision
 """
 This module contains the boolean operations that are used for merging collision shapes
 or touching shapes
@@ -52,6 +51,10 @@ def angle_between(v1, v2):
   v1_u = get_unit_vector(v1)
   v2_u = get_unit_vector(v2)
   return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+def project_points_on_face(points, face_normal, face):
+   v = points - face[0]
+   proj = np.dot(v, face_normal) * face_normal
+   return points - proj
 # ====================================================================
 # Display Functions
 # ====================================================================
@@ -67,17 +70,16 @@ def colour_palette():
 # 3D Boolean Operations
 # ====================================================================
 def boolean_3D(node1, node2, type ="union"):
-    geom_info1 = node1.geom_info
-    geom_info2 = node2.geom_info
+  geom_info1 = node1.geom_info
+  geom_info2 = node2.geom_info
 
-    if collision.intersect(geom_info1["bbox"], geom_info2["bbox"]):
-        mesh1 = trimesh.Trimesh(vertices =geom_info1["vertex"], faces =geom_info1["faceVertexIndices"])
-        mesh2 = trimesh.Trimesh(vertices =geom_info2["vertex"], faces =geom_info2["faceVertexIndices"])
+  mesh1 = trimesh.Trimesh(vertices =geom_info1["vertex"], faces =geom_info1["faceVertexIndices"])
+  mesh2 = trimesh.Trimesh(vertices =geom_info2["vertex"], faces =geom_info2["faceVertexIndices"])
 
-        if type == "union":
-            result = mesh1.union(mesh2)
+  if type == "union":
+        result = mesh1.union(mesh2)
 
-    return np.array(result.vertices, dtype=np.float32),np.array(result.faces, dtype=np.uint32)
+  return np.array(result.vertices, dtype=np.float32),np.array(result.faces, dtype=np.uint32)
 # ====================================================================
 # 2D Boolean Operations
 # ====================================================================
