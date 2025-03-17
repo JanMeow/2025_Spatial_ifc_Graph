@@ -1,4 +1,5 @@
 import numpy as np 
+from geometry_processing import project_points_on_face
 """
 Collision Testing involve 3 algorithms:
 
@@ -63,22 +64,52 @@ Since the input are assumped to be convex hull
 we skip the calculation part of the convex hull
 we could either use PCA to calculate the main axis or iterate through the faces
 PCA could be faster but might not be the most precise.
+Also since we consume its convex, its also muchfaster that we do not need to first go through
+constructing a convex hull but we could also do this.
 I will code both out
 """
+def convex_hull(vertices):
+    return
 def get_face_normal(face):
-    v1 = face[1] - face[0]
-    v2 = face[2] - face[0]
-    return np.cross(v1,v2)
-def convex_hull_best_normal(faces, vertex):
+    v0, v1, v2 = face
+    n = np.cross(v1 - v0, v2 - v0)
+    return n/np.linalg.norm(n)
+def convex_hull_best_normal(faces, vertices):
     lowest_var = 10000000
     for face in faces:
         normal = get_face_normal(face)
-        projection = np.dot(vertex, normal)
+        projection = np.dot(vertices, normal)
         var = np.var(projection)
-        if var<= lowest_var:
+        if var< lowest_var:
+            best_face = face
             best_normal = normal
+            best_projection = projection
+    n_extent =  np.max(best_projection)
+    return best_normal, best_face, n_extent
+def PCA(vertices):
     return
+def create_OOBB(faces, vertices):
+    best_normal, best_face, n_extent = convex_hull_best_normal(faces, vertices)
+    
+    O = best_face[0]
+    U = best_face[1] - O
+    V = best_face[2] - O
 
+
+
+    U /= np.linalg.norm(U)
+    V /= np.linalg.norm(V)
+
+    local_coords = np.array([[np.dot(v - O, U), np.dot(v - O, V)] for v in vertices])
+    UV_extent = np.vstack((np.min(local_coords, axis=0), np.max(local_coords, axis=0)))
+
+    print(UV_extent)
+    temp = np.round(UV_extent @ np.array([U,V]) + O, 2)
+    v_t = temp[1] -temp[0]
+    p1 = v_t @ U + O
+    p2 = v_t @ V + O
+    print(np.round(UV_extent @ np.array([U,V]) + O, 2))
+    return np.vstack((O,best_face[1],best_face[2]))
 # ====================================================================
 # Narrow Phase Collision Detection1: GJK
 # ====================================================================
