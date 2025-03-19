@@ -108,6 +108,10 @@ def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, t
       geom_type == node.geom_type,
       abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
       abs(height1 - height2) < tolerance]
+  elif geom_type == "IfcRoof":
+    conditions = [
+      geom_type == node.geom_type
+  ]
   if all(conditions):
     return True
   return False

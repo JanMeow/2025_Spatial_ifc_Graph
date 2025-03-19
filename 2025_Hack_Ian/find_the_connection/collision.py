@@ -1,5 +1,8 @@
 import numpy as np 
 from geometry_processing import project_points_on_face
+from sklearn.decomposition import PCA
+from scipy.linalg import lu
+from scipy.optimize import linear_sum_assignment
 """
 Collision Testing involve 3 algorithms:
 
@@ -70,63 +73,116 @@ I will code both out
 """
 def convex_hull(vertices):
     return
-def get_face_normal(face):
-    v0, v1, v2 = face
+def get_normal(faces):
+    print(faces.shape)
+    v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]
     n = np.cross(v1 - v0, v2 - v0)
     return n/np.linalg.norm(n)
-def convex_hull_best_normal(faces, vertices):
-    lowest_var = 10000000
-    for face in faces:
-        normal = get_face_normal(face)
-        projection = np.dot(vertices, normal)
-        var = np.var(projection)
-        if var< lowest_var:
-            best_face = face
-            best_normal = normal
-            best_projection = projection
-    n_extent =  np.max(best_projection)
-    return best_normal, best_face, n_extent
-def PCA(vertices):
+def convex_hull_best_face(faces, vertices):
+    # Compute the local frame per face
+    U = faces[:,1] - faces[:,0]  # Shape (32, 3)
+    V = faces[:,2] - faces[:,0]  # Shape (32, 3)
+    N = np.cross(U, V)
+    N /= np.linalg.norm(N, axis=1, keepdims=True)  # Normalize
+
+    # Stack face basis vectors for batch projection
+    face_axes = np.stack([U, V, N], axis=1)  # Shape (32, 3, 3)
+    # Efficient batch projection using einsum
+    projections = np.einsum('fij,vj->fvi', face_axes, vertices)  # Shape (32, 3, 18)
+    # Compute variance along the 18 vertices for each face and axis
+    variances = np.var(projections, axis=2)  # Shape (32, 3)
+    # Minimize UV variance (spread in 2D)
+    var_sum = variances[:, 0] * variances[:, 1] * variances[:,2] # Only use U and V variances
+    best_face = faces[np.argmin(var_sum)]  # Face that minimizes projected spread
+
+    return best_face
+def check_pca_similarity(node1_p_axes, node2_p_axes, atol = 0.1, method = "Hungarian"):
+    """
+    Check if the PCA axes of two objects are similar from PCA 
+    Two methods for checking:
+    1. Hungarian (Recommended): Slightly slower but more precise, can accept up to 1e-5
+    2. Gaussian: Faster but less precise, can accept up to 1e-2
+    """
+    M = node1_p_axes @ node2_p_axes.T
+    similarity = np.abs(M) 
+    if method == "Hungarian":
+        row_ind, col_ind = linear_sum_assignment(-similarity)
+        return np.allclose(similarity[row_ind, col_ind], 1.0, atol=atol)
+    if method == "Gaussian":
+        pl, similarity = lu(similarity, permute_l=True)
+        similarity[similarity <1e-2] = 0
+        identity_check = np.allclose(similarity, np.eye(M.shape[0]), atol= atol)
+        return identity_check
+def oobb_pca(vertices):
+    pca = PCA(n_components=3)
+    pca.fit(vertices)
+    # Principal axes (columns are the basis vectors)
+    principal_axes = pca.components_
+    # Transform points to PCA-aligned space
+    transformed_points = vertices @ principal_axes.T
+    # Compute bounding box in PCA space
+    min_bounds = np.min(transformed_points, axis=0)
+    max_bounds = np.max(transformed_points, axis=0)
+    # Create 8 corners of the bounding box in PCA space
+    box_corners_pca = np.array([
+        [min_bounds[0], min_bounds[1], min_bounds[2]],
+        [min_bounds[0], min_bounds[1], max_bounds[2]],
+        [min_bounds[0], max_bounds[1], min_bounds[2]],
+        [min_bounds[0], max_bounds[1], max_bounds[2]],
+        [max_bounds[0], min_bounds[1], min_bounds[2]],
+        [max_bounds[0], min_bounds[1], max_bounds[2]],
+        [max_bounds[0], max_bounds[1], min_bounds[2]],
+        [max_bounds[0], max_bounds[1], max_bounds[2]],
+    ])
+    # Transform corners back to the original space
+    box_corners_world = box_corners_pca @ principal_axes  # Reverse transformation  
+    # pl, principal_axes = lu(principal_axes, permute_l=True)
+    return box_corners_world, principal_axes, min_bounds, max_bounds
+def ooBB_convex_hull(faces,vertices):
     return
-def create_OOBB(faces, vertices):
-    best_normal, best_face, n_extent = convex_hull_best_normal(faces, vertices)
+def create_OOBB(node, method):
+    vertices = node.geom_info["vertex"]
+    fv_index = node.geom_info["faceVertexIndices"]
+    faces = vertices[fv_index]
+    if method == "PCA":
+        return oobb_pca(vertices) 
+    if method == "ConvexHull":
+        best_face = convex_hull_best_face(faces, vertices)
     
-    O = best_face[0]
-    U = best_face[1] - O
-    V = best_face[2] - O
+        O = best_face[0]
+        U = best_face[1] - O
+        V = best_face[2] - O
 
+        U /= np.linalg.norm(U)
+        V /= np.linalg.norm(V)
+        v_O = vertices - O
 
+        local_coords = np.column_stack([np.dot(v_O, U), np.dot(v_O, V)])
+        min_UV, max_UV = np.min(local_coords, axis=0), np.max(local_coords, axis=0)
+        UV_corners = np.array([
+        [min_UV[0], min_UV[1]],  # Bottom-left
+        [min_UV[0], max_UV[1]],  # Top-left
+        [max_UV[0], min_UV[1]],  # Bottom-right
+        [max_UV[0], max_UV[1]]   # Top-right
+    ])
 
-    U /= np.linalg.norm(U)
-    V /= np.linalg.norm(V)
+        bounding_box_3D = UV_corners @ np.array([U, V]) + O
 
-    local_coords = np.array([[np.dot(v - O, U), np.dot(v - O, V)] for v in vertices])
-    UV_extent = np.vstack((np.min(local_coords, axis=0), np.max(local_coords, axis=0)))
-
-    print(UV_extent)
-    temp = np.round(UV_extent @ np.array([U,V]) + O, 2)
-    v_t = temp[1] -temp[0]
-    p1 = v_t @ U + O
-    p2 = v_t @ V + O
-    print(np.round(UV_extent @ np.array([U,V]) + O, 2))
-    return np.vstack((O,best_face[1],best_face[2]))
+        return np.vstack((bounding_box_3D))
 # ====================================================================
 # Narrow Phase Collision Detection1: GJK
 # ====================================================================
 # 0.Initial Direction to avoide degenerate
 def compute_centroid(shape):
     return np.mean(shape, axis=0)
-
 def initial_direction_from_centroids(shape1, shape2):
     centroid1 = compute_centroid(shape1)
     centroid2 = compute_centroid(shape2)
     direction = centroid1 - centroid2
-    
     if np.allclose(direction, 0, atol=1e-6):  
         bbox_min = np.min(shape1, axis=0)
         bbox_max = np.max(shape1, axis=0)
         return bbox_max - bbox_min  # Default fallback
-
     return direction
 # 1. Get support function
 def support(shape, direction):
@@ -219,4 +275,5 @@ def mini_BVH(shape1, shape2):
 # Narrow Phase Collision Detection1: SAT
 # SAT works faster with triangle
 # ====================================================================
-def SAT(shape1, shape2):    return
+def SAT(shape1, shape2):    
+    return

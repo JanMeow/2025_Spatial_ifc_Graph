@@ -53,7 +53,7 @@ def angle_between(v1, v2):
   return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 def project_points_on_face(points, face_normal, face):
    v = points - face[0]
-   proj = np.dot(v, face_normal) * face_normal
+   proj = np.dot(v, face_normal)[:, np.newaxis] * face_normal
    return points - proj
 # ====================================================================
 # Display Functions
@@ -69,17 +69,38 @@ def colour_palette():
 # ====================================================================
 # 3D Boolean Operations
 # ====================================================================
-def boolean_3D(node1, node2, type ="union"):
-  geom_info1 = node1.geom_info
-  geom_info2 = node2.geom_info
+def boolean_3D(nodes, operation="union"):
+    """
+    Perform a boolean operation (union, intersection, difference) on multiple 3D meshes.
 
-  mesh1 = trimesh.Trimesh(vertices =geom_info1["vertex"], faces =geom_info1["faceVertexIndices"])
-  mesh2 = trimesh.Trimesh(vertices =geom_info2["vertex"], faces =geom_info2["faceVertexIndices"])
+    Parameters:
+    - nodes (list): List of nodes containing `geom_info` with "vertex" and "faceVertexIndices".
+    - operation (str): Type of boolean operation ("union", "intersection", "difference").
 
-  if type == "union":
-        result = mesh1.union(mesh2)
+    Returns:
+    - vertices (np.ndarray): Array of resulting mesh vertices (float32).
+    - faces (np.ndarray): Array of resulting mesh faces (uint32).
+    """
+    if len(nodes) < 2:
+        raise ValueError("At least two meshes are required for a boolean operation.")
 
-  return np.array(result.vertices, dtype=np.float32),np.array(result.faces, dtype=np.uint32)
+    # Convert node geometries to trimesh objects
+    meshes = [
+        trimesh.Trimesh(vertices=node.geom_info["vertex"], 
+                        faces=node.geom_info["faceVertexIndices"]) 
+        for node in nodes
+    ]
+
+    if operation == "union":
+        result = trimesh.boolean.union(meshes)
+    elif operation == "intersection":
+        result = trimesh.boolean.intersection(meshes)
+    elif operation == "difference":
+        result = trimesh.boolean.difference(meshes)
+    else:
+        raise ValueError(f"Invalid operation type: {operation}")
+
+    return np.array(result.vertices, dtype=np.float32), np.array(result.faces, dtype=np.uint32)
 # ====================================================================
 # 2D Boolean Operations
 # ====================================================================
