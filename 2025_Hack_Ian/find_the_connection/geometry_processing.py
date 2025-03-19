@@ -57,7 +57,7 @@ def project_points_on_face(points, face_normal, face):
    return points - proj
 # ====================================================================
 # Display Functions
-# ====================================================================
+# ==============================================================  ======
 def clipping_plane():
    return
 def showMesh(vf_list):

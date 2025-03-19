@@ -3,6 +3,7 @@ from geometry_processing import project_points_on_face
 from sklearn.decomposition import PCA
 from scipy.linalg import lu
 from scipy.optimize import linear_sum_assignment
+from scipy.spatial import ConvexHull
 """
 Collision Testing involve 3 algorithms:
 
@@ -62,37 +63,40 @@ def envelop(bbox1, bbox2):
 # ====================================================================
 # Mid Phase Collision Detection: OOBB Object Oritend BoundingBox
 # ====================================================================
-"""
-Since the input are assumped to be convex hull
-we skip the calculation part of the convex hull
-we could either use PCA to calculate the main axis or iterate through the faces
-PCA could be faster but might not be the most precise.
-Also since we consume its convex, its also muchfaster that we do not need to first go through
-constructing a convex hull but we could also do this.
-I will code both out
-"""
-def convex_hull(vertices):
-    return
+def create_convex_hull(vertices):
+    """
+    Compute the convex hull of a set of vertices.
+    Only need it for concave shape, if the return is the same as the input, 
+    then the input shape is already convex
+    """
+    hull = ConvexHull(vertices)
+    return vertices[hull.vertices]
 def get_normal(faces):
     print(faces.shape)
     v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]
     n = np.cross(v1 - v0, v2 - v0)
     return n/np.linalg.norm(n)
 def convex_hull_best_face(faces, vertices):
-    # Compute the local frame per face
-    U = faces[:,1] - faces[:,0]  # Shape (32, 3)
-    V = faces[:,2] - faces[:,0]  # Shape (32, 3)
-    N = np.cross(U, V)
-    N /= np.linalg.norm(N, axis=1, keepdims=True)  # Normalize
+    """
+    Compute the best face to use for the convex hull of a set of vertices.
+    The best face is the one that minimizes the spread of the projected vertices.
+    """
 
-    # Stack face basis vectors for batch projection
-    face_axes = np.stack([U, V, N], axis=1)  # Shape (32, 3, 3)
+    U = faces[:,1] - faces[:,0] 
+    V = faces[:,2] - faces[:,0]  
+    U /= np.linalg.norm(U)
+    V /= np.linalg.norm(V)
+    N = np.cross(U, V)
+    N /= np.linalg.norm(N)
+
+    face_axes = np.stack([U, V, N], axis=1)  
     # Efficient batch projection using einsum
-    projections = np.einsum('fij,vj->fvi', face_axes, vertices)  # Shape (32, 3, 18)
+    projections = np.einsum('fij,vj->fvi', face_axes, vertices)  
     # Compute variance along the 18 vertices for each face and axis
-    variances = np.var(projections, axis=2)  # Shape (32, 3)
-    # Minimize UV variance (spread in 2D)
-    var_sum = variances[:, 0] * variances[:, 1] * variances[:,2] # Only use U and V variances
+    variances = np.var(projections, axis=2)  
+
+    # Minimize UVN variance 
+    var_sum = variances[:, 0] * variances[:, 1] * variances[:,2] 
     best_face = faces[np.argmin(var_sum)]  # Face that minimizes projected spread
 
     return best_face
@@ -155,20 +159,29 @@ def create_OOBB(node, method):
 
         U /= np.linalg.norm(U)
         V /= np.linalg.norm(V)
+        N = np.cross(U, V)
+        N /= np.linalg.norm(N)
         v_O = vertices - O
 
+        proj = project_points_on_face(vertices, N, best_face)
+        print(proj)
+        # hull = ConvexHull(proj)
+        # print(hull.vertices)
         local_coords = np.column_stack([np.dot(v_O, U), np.dot(v_O, V)])
-        min_UV, max_UV = np.min(local_coords, axis=0), np.max(local_coords, axis=0)
+        UV_extent = np.vstack((np.min(local_coords, axis=0),
+                               np.max(local_coords, axis=0)))
+
         UV_corners = np.array([
-        [min_UV[0], min_UV[1]],  # Bottom-left
-        [min_UV[0], max_UV[1]],  # Top-left
-        [max_UV[0], min_UV[1]],  # Bottom-right
-        [max_UV[0], max_UV[1]]   # Top-right
-    ])
+            [UV_extent[0][0], UV_extent[0][1]],  # Bottom-left
+            [UV_extent[0][0], UV_extent[1][1]],  # Top-left
+            [UV_extent[1][0], UV_extent[0][1]],  # Bottom-right
+            [UV_extent[1][0], UV_extent[1][1]]   # Top-right
+        ])
 
-        bounding_box_3D = UV_corners @ np.array([U, V]) + O
+        bounding_box_base = UV_corners @ np.stack([U, V], axis=0) + O
+        print(bounding_box_base)
 
-        return np.vstack((bounding_box_3D))
+        return np.vstack((best_face[0],best_face[1],best_face[2],bounding_box_base))
 # ====================================================================
 # Narrow Phase Collision Detection1: GJK
 # ====================================================================

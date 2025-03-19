@@ -61,19 +61,16 @@ def main():
     nodeR0 = graph.node_dict["1QmrSv$7f8vB34GVkkI57J"]
     nodeR1 = graph.node_dict["0TAmI$AOf2HOFYvSNZEV2u"]
     nodeR2 = graph.node_dict["0zlLHiur1ElR$u0pjr99AU"]
-
-    
+    # PCA Decomposition
     temp0 = collision.create_OOBB(nodeR0, "PCA")
     temp1 = collision.create_OOBB(nodeR1, "PCA")
     temp2 = collision.create_OOBB(nodeR2, "PCA")
     # print(temp0[1] )
     # print(temp1[1])
     # print(temp2[1])
-    print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Hungarian"))
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Hungarian"))
 
-
-
-    
+    temp0 = collision.create_OOBB(nodeR0, "ConvexHull")
 
     def show_points_as_spheres(points, radius=0.05, geom_info = nodeR0.geom_info):
 
@@ -95,7 +92,6 @@ def main():
         scene.show()
 
 
-    # show_points_as_spheres(pca_test[0])
     # show_points_as_spheres(temp0)
 
 
