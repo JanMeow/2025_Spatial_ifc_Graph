@@ -4,9 +4,10 @@ from pathlib import Path
 from utils import  Graph, get_triangulated_planes
 from traversal import get_adjacent
 from export import create_ifc_for_partial_model
-from geometry_processing import decompose_2D, angle_between, boolean_3D, showMesh
+from geometry_processing import decompose_2D, angle_between, boolean_3D
 import trimesh
 import collision
+import display
 
 # ====================================================================
 ifc_folder = Path("data")/"ifc"
@@ -62,13 +63,18 @@ def main():
     nodeR1 = graph.node_dict["0TAmI$AOf2HOFYvSNZEV2u"]
     nodeR2 = graph.node_dict["0zlLHiur1ElR$u0pjr99AU"]
     # PCA Decomposition
-    temp0 = collision.create_OOBB(nodeR0, "PCA")
-    temp1 = collision.create_OOBB(nodeR1, "PCA")
-    temp2 = collision.create_OOBB(nodeR2, "PCA")
-    # print(temp0[1] )
+    # temp0 = collision.create_OOBB(nodeR0, "PCA")
+    # temp1 = collision.create_OOBB(nodeR1, "PCA")
+    # temp2 = collision.create_OOBB(nodeR2, "PCA")
+    # print(temp0[2][1]-temp0[2][0])
+    # print(temp1[2][1]-temp1[2][0]) 
+    # print(temp2[2][1]-temp2[2][0])
     # print(temp1[1])
     # print(temp2[1])
     # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Hungarian"))
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Gaussian"))
+
+
 
     temp0 = collision.create_OOBB(nodeR0, "ConvexHull")
 
@@ -92,7 +98,7 @@ def main():
         scene.show()
 
 
-    # show_points_as_spheres(temp0)
+    show_points_as_spheres(temp0)
 
 
 
