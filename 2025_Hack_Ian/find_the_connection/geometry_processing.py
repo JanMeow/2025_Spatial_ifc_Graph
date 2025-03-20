@@ -47,6 +47,10 @@ def decompose_2D(node):
    return vs[sorted_idx], scalars[sorted_idx]
 def get_unit_vector(v):
   return v/np.linalg.norm(v)
+def get_normal(faces):
+    v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]
+    n = np.cross(v1 - v0, v2 - v0)
+    return n/np.linalg.norm(n)
 def angle_between(v1, v2):
   v1_u = get_unit_vector(v1)
   v2_u = get_unit_vector(v2)

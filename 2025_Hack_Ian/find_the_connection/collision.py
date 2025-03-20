@@ -1,5 +1,5 @@
 import numpy as np 
-from geometry_processing import project_points_on_face
+from geometry_processing import project_points_on_face, get_normal
 from sklearn.decomposition import PCA
 from scipy.linalg import lu
 from scipy.optimize import linear_sum_assignment
@@ -71,34 +71,26 @@ def create_convex_hull(vertices):
     """
     hull = ConvexHull(vertices)
     return vertices[hull.vertices]
-def get_normal(faces):
-    print(faces.shape)
-    v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]
-    n = np.cross(v1 - v0, v2 - v0)
-    return n/np.linalg.norm(n)
 def convex_hull_best_face(faces, vertices):
     """
     Compute the best face to use for the convex hull of a set of vertices.
     The best face is the one that minimizes the spread of the projected vertices.
     """
-
+    # Calculte the U,V and normal N vectors for each face
     U = faces[:,1] - faces[:,0] 
     V = faces[:,2] - faces[:,0]  
     U /= np.linalg.norm(U)
     V /= np.linalg.norm(V)
     N = np.cross(U, V)
     N /= np.linalg.norm(N)
-
     face_axes = np.stack([U, V, N], axis=1)  
-    # Efficient batch projection using einsum
-    projections = np.einsum('fij,vj->fvi', face_axes, vertices)  
-    # Compute variance along the 18 vertices for each face and axis
-    variances = np.var(projections, axis=2)  
-
-    # Minimize UVN variance 
-    var_sum = variances[:, 0] * variances[:, 1] * variances[:,2] 
-    best_face = faces[np.argmin(var_sum)]  # Face that minimizes projected spread
-
+    # Project vertices onto each face and on each axis (U,V,N)
+    M = face_axes @ vertices.T
+    # Get the variances of the projection for each face 
+    V = np.var(M, axis = 2)
+    # Get the face that minimizes the variance across 3 axis
+    var_sum = V[:, 0] * V[:, 1] * V[:,2] 
+    best_face = faces[np.argmin(var_sum)]
     return best_face
 def check_pca_similarity(node1_p_axes, node2_p_axes, atol = 0.1, method = "Hungarian"):
     """
@@ -113,7 +105,7 @@ def check_pca_similarity(node1_p_axes, node2_p_axes, atol = 0.1, method = "Hunga
         row_ind, col_ind = linear_sum_assignment(-similarity)
         return np.allclose(similarity[row_ind, col_ind], 1.0, atol=atol)
     if method == "Gaussian":
-        pl, similarity = lu(similarity, permute_l=True)
+        _, similarity = lu(similarity, permute_l=True)
         similarity[similarity <1e-2] = 0
         identity_check = np.allclose(similarity, np.eye(M.shape[0]), atol= atol)
         return identity_check
@@ -140,8 +132,7 @@ def oobb_pca(vertices):
     ])
     # Transform corners back to the original space
     box_corners_world = box_corners_pca @ principal_axes  # Reverse transformation  
-    # pl, principal_axes = lu(principal_axes, permute_l=True)
-    return box_corners_world, principal_axes, min_bounds, max_bounds
+    return box_corners_world, principal_axes, np.vstack((min_bounds, max_bounds))
 def ooBB_convex_hull(faces,vertices):
     return
 def create_OOBB(node, method):
@@ -163,10 +154,6 @@ def create_OOBB(node, method):
         N /= np.linalg.norm(N)
         v_O = vertices - O
 
-        proj = project_points_on_face(vertices, N, best_face)
-        print(proj)
-        # hull = ConvexHull(proj)
-        # print(hull.vertices)
         local_coords = np.column_stack([np.dot(v_O, U), np.dot(v_O, V)])
         UV_extent = np.vstack((np.min(local_coords, axis=0),
                                np.max(local_coords, axis=0)))
@@ -179,7 +166,6 @@ def create_OOBB(node, method):
         ])
 
         bounding_box_base = UV_corners @ np.stack([U, V], axis=0) + O
-        print(bounding_box_base)
 
         return np.vstack((best_face[0],best_face[1],best_face[2],bounding_box_base))
 # ====================================================================
