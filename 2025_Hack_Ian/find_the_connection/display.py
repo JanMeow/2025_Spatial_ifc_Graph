@@ -5,16 +5,39 @@ Libraries and functions for mesh displaying
 """
 # ====================================================================
 # Display Functions
-# ==============================================================  ======
+# ====================================================================
 def clipping_plane():
    return
-def display_mesh(vf_list):
-  meshes = [trimesh.Trimesh(vertices =v, faces =f) for v,f in vf_list]
-  scene = trimesh.Scene(meshes)
-  scene.show()
 def colour_palette():
    return
-def display_points(points, radius=0.05):
+def show(funcs):
+   """
+    Example Input: display([display_mesh(nodes), display_points(points), display_vector(vectors)])
+   """
+   scene = trimesh.Scene()
+   for geom in funcs:
+        scene.add_geometry(geom)
+   scene.show()
+def mesh(nodes, show_edges = False, edge_only = False):
+   meshes = []
+   for node in nodes:
+      mesh = trimesh.Trimesh(vertices =node.geom_info["vertex"], faces =node.geom_info["faceVertexIndices"])
+      # mesh.visual.face_colors = [50, 50, 50, 100]
+      line_colour = [128, 128, 128, 150]
+      if edge_only:
+         show_edges = True
+      else:
+         meshes.append(mesh)
+      if show_edges == True:
+         edges = mesh.edges_unique
+         edge_vertices = mesh.vertices[edges]
+         for edge in edge_vertices:
+            path = trimesh.load_path(edge)
+            meshes.append(path)
+            for entity in path.entities:
+               entity.color = line_colour
+   return meshes
+def points(points, radius=0.05):
     # Create a sphere mesh at each point
     spheres = []
     for point in points:
@@ -23,19 +46,15 @@ def display_points(points, radius=0.05):
         s.visual.face_colors = [0, 255, 255, 255]
         spheres.append(s)
     return spheres
-def display_vector(vectors):
-   """
-   Example Input:
-   p1 = np.array([0, 0, 0])
-   p2 = np.array([1, 2, 3])
-   vectors[i] =  np.vstack((p1, p2))
-   """
-   edges = np.array([[0, 1]]) 
+def vector(vectors, origin = np.array([0,0,0]), length = 1):
+   vectors *= length
+   colour = [255, 0, 0, 150]
    paths = []
    for vector in vectors:
-    path = trimesh.load_path(vertices=vector, edges=edges)
-    path.visual.vertex_colors = [0, 0, 255, 255]
-    path.visual.face_colors = [0, 0, 255, 150]
+    v = origin + vector
+    v = np.vstack((v, origin))
+    path = trimesh.load_path(v)
+    for entity in path.entities:
+        entity.color = colour
     paths.append(path)
    return paths
-

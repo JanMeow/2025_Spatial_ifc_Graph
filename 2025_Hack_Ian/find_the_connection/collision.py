@@ -167,7 +167,8 @@ def create_OOBB(node, method):
 
         bounding_box_base = UV_corners @ np.stack([U, V], axis=0) + O
 
-        return np.vstack((best_face[0],best_face[1],best_face[2],bounding_box_base))
+
+        return np.vstack((best_face[0],best_face[1],best_face[2],bounding_box_base)), np.stack([U, V, N], axis =1)
 # ====================================================================
 # Narrow Phase Collision Detection1: GJK
 # ====================================================================

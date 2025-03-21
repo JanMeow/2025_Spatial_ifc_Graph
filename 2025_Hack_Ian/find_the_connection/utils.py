@@ -5,7 +5,7 @@ import ifcopenshell.util.shape
 import collision
 import math
 from traversal import bfs_traverse, loop_detecton
-from geometry_processing import decompose_2D, angle_between
+from geometry_processing import decompose_2D, angle_between, get_base_curve
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -54,7 +54,6 @@ def get_triangulated_equation(A, B, C):
     # Print(equation)
     print(f"Plane equation: {A}x + {B}y + {C}z + {D} = 0")
     return A, B, C, D
-
 def get_triangulated_planes(node):
     if node.geom_info == None:
       print("Node has no geometry")
@@ -70,11 +69,16 @@ def get_triangulated_planes(node):
         v_stack = np.vstack((A,B,C))
         array[i] = v_stack
     return array
+def np_intersect_rows(arr1, arr2):
+        set1 = set(map(tuple, arr1))
+        set2 = set(map(tuple, arr2))
+        shared = set1.intersection(set2)
+        return np.array(list(shared))
 
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
-def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, tolerance = 0.01):
+def merge_test(node, geom_type = None, geom_info = None, v1 = None, b1 = None, tolerance = 1e-3):
   """
     Condition of merging for two nodes (wall)
     1. Same Geometry Type
@@ -89,29 +93,36 @@ def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, t
     1. test upper plane the same
     2. same thickness
   """
-  v2,l2 = decompose_2D(node)
+  # if they are not of same type, no need check anything, imeediately return False
+  if geom_type != node.geom_type:
+    return False
+  # Check geometric properties
   bbox1 = geom_info["bbox"]
   bbox2 = node.geom_info["bbox"]
   height1 = bbox1[1][2] - bbox1[0][2]
   height2 = bbox2[1][2] - bbox2[0][2]
-  angle = angle_between(v1[1], v2[1])
-
+  # Different Geometric check based on type
   if geom_type == "IfcWall":
+    b2 = get_base_curve(node)
+    base_intersection = np_intersect_rows(b1,b2)
+    # traverse_direction = np.cross()
+    v2 = decompose_2D(node)
+    angles = angle_between(v1, v2)
+    mask = (angles < 1e-3) | ((angles - math.pi) < 1e-3)
     conditions =[
-      geom_type == node.geom_type,
-      abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
-      abs(height1 - height2) < tolerance,
-      abs(l1[0] - l2[0]) < tolerance,
-      angle < tolerance or angle - math.pi < tolerance]
+      abs(bbox1[0][2] - bbox2[0][2] )< tolerance, # Same Z location to start
+      abs(height1 - height2) < tolerance, # Same height 
+      len(base_intersection) ==2,  # 2 touching vertex in base curve 
+      np.count_nonzero(np.any(mask, axis=1))>1]
   elif geom_type == "IfcSlab":
     conditions = [
-      geom_type == node.geom_type,
       abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
       abs(height1 - height2) < tolerance]
   elif geom_type == "IfcRoof":
     conditions = [
       geom_type == node.geom_type
   ]
+  
   if all(conditions):
     return True
   return False
@@ -122,16 +133,17 @@ def merge(node):
   }
   _type = node.geom_type
   geom_info = node.geom_info
-  v,l = decompose_2D(node)
+  b1 = get_base_curve(node)
+  v = decompose_2D(node)
   stack = [node]
   while stack:
     current = stack.pop()
     memory["T"].add(current.guid)
     for node_n in current.near:
       if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
-        if merge_test(node_n, _type, geom_info, v, l):
+        if merge_test(node_n, _type, geom_info, v, b1):
           stack.append(node_n)
-        else:
+        else: 
           memory["F"].add(node_n.guid)
   return list(memory["T"])
 def write_to_node(current_node):
@@ -199,6 +211,19 @@ class Graph:
   def merge_adjacent(self, guid):
     node = self.node_dict[guid]
     return merge(node)
+  def merge_type(self, model, ifc_type):
+    memory = {}
+    merged = set()
+    guids = [i.GlobalId for i in model.by_type(ifc_type)]
+    for guid in guids:
+      if guid not in merged:
+        node = self.node_dict[guid]
+        results = merge(node)
+        for result in results:
+          merged.add(result)
+        if len(results) > 1:
+          memory[guid] = results
+    return memory
   def gjk_query(self,guid1, guid2):
     node1 = self.node_dict[guid1]
     node2 = self.node_dict[guid2]

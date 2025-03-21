@@ -1,18 +1,19 @@
 import ifcopenshell
 import numpy as np
 from pathlib import Path
-from utils import  Graph, get_triangulated_planes
+from utils import  Graph, get_triangulated_planes, np_intersect_rows
 from traversal import get_adjacent
 from export import create_ifc_for_partial_model
-from geometry_processing import decompose_2D, angle_between, boolean_3D
+from geometry_processing import decompose_2D, angle_between, boolean_3D, get_base_curve
 import trimesh
 import collision
 import display
+import math
 
 # ====================================================================
 ifc_folder = Path("data")/"ifc"
 ifc_folder.mkdir(parents=True, exist_ok=True)
-ifc_path = ifc_folder/"test1.ifc"
+ifc_path = ifc_folder/"test2.ifc"
 export_path = "data/ifc/new_model.ifc"
 
 def main():
@@ -20,16 +21,11 @@ def main():
     # ====================================================================
     model = ifcopenshell.open(ifc_path)
     root = model.by_type("IfcProject")[0]
-    guid1 = "0js3D2vQP9PeLECr8TXDwW"
-    guid2  = "1ExlF2Qnv1QA32hRKgFhNX"
-    proxy1 = model.by_guid(guid1)
 
     # # Create a graph and establish BVH Tree
     # ====================================================================
     graph = Graph.create(root)
     graph.build_bvh()
-    node1 = graph.node_dict[guid1]
-    queries = graph.bvh_query(node1.geom_info["bbox"])
 
     # Build the graph based on relationship
     # ====================================================================
@@ -52,6 +48,23 @@ def main():
 
     # Get all connected same type (wall and slab)
     # ====================================================================
+    walls = [i.GlobalId for i in model.by_type("IfcWall")]
+    slabs = [i.GlobalId for i in model.by_type("IfcSlab")]
+    print("Walls")
+    print(graph.merge_type(model, "IfcWall"))
+    # for guid in walls:
+    #     result  = graph.merge_adjacent(guid)
+    #     print(result)
+    print("Slabs")
+    for guid in slabs:
+        result  = graph.merge_adjacent(guid)
+        print(result)
+
+
+
+
+
+
     # result = graph.merge_adjacent(guid2)
     # results = [graph.node_dict[guid] for guid in result]
     # bool_result = [boolean_3D(results, operation="union")]
@@ -59,14 +72,11 @@ def main():
 
     #  Get all connected same type (inclinde geom / roof) using PCA / Convex Hull Best face
     # ====================================================================
-    nodeR0 = graph.node_dict["1QmrSv$7f8vB34GVkkI57J"]
-    nodeR1 = graph.node_dict["0TAmI$AOf2HOFYvSNZEV2u"]
-    nodeR2 = graph.node_dict["0zlLHiur1ElR$u0pjr99AU"]
+    roof = [i.GlobalId for i in model.by_type("IfcRoof")]
+
     # PCA Decomposition
     # ============================
-    # temp0 = collision.create_OOBB(nodeR0, "PCA")
-    # temp1 = collision.create_OOBB(nodeR1, "PCA")
-    # temp2 = collision.create_OOBB(nodeR2, "PCA")
+    # temp = collision.create_OOBB(nodeR0, "PCA")
     # print(temp0[2][1]-temp0[2][0])
     # print(temp1[2][1]-temp1[2][0]) 
     # print(temp2[2][1]-temp2[2][0])
@@ -76,16 +86,16 @@ def main():
     # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Gaussian"))   
     # Convex Hull Decomposition
     # ============================
-    temp = collision.create_OOBB(nodeR0, "ConvexHull")
-    print(temp[1])
+    # temp = collision.create_OOBB(nodeR0, "ConvexHull")
+    # print(temp[1])
 
     # Displaying mesh, points or vectors
     # ====================================================================
-    display.show([
-        display.mesh([nodeR0], show_edges = True),
-        display.points(temp[0]),
-        display.vector(temp[1], origin = temp[0][0])
-                  ])
+    # display.show([
+    #     display.mesh([nodeR0], show_edges = True),
+    #     display.points(temp[0]),
+    #     display.vector(temp[1], origin = temp[0][0])
+    #               ])
 
     # Exporting the model after rewriting the geometry to ifc
     # ====================================================================

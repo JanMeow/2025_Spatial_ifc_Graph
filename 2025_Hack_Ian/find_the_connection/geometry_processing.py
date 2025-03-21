@@ -40,11 +40,9 @@ def get_base_curve(node):
   lowest_z = node.geom_info["bbox"][0][2]
   return vertex[vertex[:,2] == lowest_z]
 def decompose_2D(node):
-   base = get_base_curve(node)
-   vs = np.array([base[1]- base[0],base[2] - base[1]])
-   scalars = np.linalg.norm(vs, axis = 1)
-   sorted_idx = np.argsort(scalars)
-   return vs[sorted_idx], scalars[sorted_idx]
+  base = get_base_curve(node)
+  vs = np.array([base[1]- base[0],base[2] - base[1]])
+  return vs/ np.linalg.norm(vs, axis = 1)[:, np.newaxis]
 def get_unit_vector(v):
   return v/np.linalg.norm(v)
 def get_normal(faces):
@@ -54,7 +52,7 @@ def get_normal(faces):
 def angle_between(v1, v2):
   v1_u = get_unit_vector(v1)
   v2_u = get_unit_vector(v2)
-  return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+  return np.arccos(np.clip(np.dot(v1_u, v2_u.T), -1.0, 1.0))
 def project_points_on_face(points, face_normal, face):
    v = points - face[0]
    proj = np.dot(v, face_normal)[:, np.newaxis] * face_normal
