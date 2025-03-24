@@ -43,15 +43,20 @@ def decompose_2D(node):
   base = get_base_curve(node)
   vs = np.array([base[1]- base[0],base[2] - base[1]])
   return vs/ np.linalg.norm(vs, axis = 1)[:, np.newaxis]
+def decompose_2D_from_base(base):
+  vs = np.array([base[1]- base[0],base[2] - base[1]])
+  scalars = np.linalg.norm(vs, axis = 1)
+  sort_indices = np.argsort(np.linalg.norm(vs, axis = 1))
+  return vs[sort_indices]
 def get_unit_vector(v):
   return v/np.linalg.norm(v)
 def get_normal(faces):
-    v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]
+    v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]  
     n = np.cross(v1 - v0, v2 - v0)
     return n/np.linalg.norm(n)
 def angle_between(v1, v2):
-  v1_u = get_unit_vector(v1)
-  v2_u = get_unit_vector(v2)
+  v1_u = v1/np.linalg.norm(v1)
+  v2_u = v2/np.linalg.norm(v2)
   return np.arccos(np.clip(np.dot(v1_u, v2_u.T), -1.0, 1.0))
 def project_points_on_face(points, face_normal, face):
    v = points - face[0]

@@ -40,28 +40,53 @@ def set_property (model, entity, property_name,property_value, property_type = "
         RelatedObjects=[entity]
     )
   return entity
-def create_ifc_for_partial_model(entity, model, schema = "IFC4", write_file = True, file_path = "new_model.ifc", save_props = True):
-  # Create_basic_skeleton
-  new_model, storey = create_basic_project_strcuture(entity, schema = "IFC4", relationship = "IfcRelAggregates")
-  partial_grapth = model.traverse(entity)
-  # Copying the entities into an object and linking it to the storey level
-  for i,node in enumerate(partial_grapth):
-    copied_entity = new_model.add(node)
-    if i == 0:
-      root_node = copied_entity
-    # Traverse does not contain the custom property, so we need to get those also
-    if save_props and hasattr(node, "IsDefinedBy"):
-      props = node.IsDefinedBy
-      for prop in props:
-        new_model.add(prop)
-  # Linking to the storey level
-  new_model.create_entity(
-    "IfcRelContainedInSpatialStructure",
-    GlobalId=ifcopenshell.guid.new(),
-    RelatingStructure=storey,
-    RelatedElements=[root_node],
-)
-  if write_file:
-    new_model.write(file_path)
+def create_ifc_for_partial_model(guids, model, schema="IFC4", write_file=True, file_path="new_model.ifc", save_props=True):
+    """
+    Export a partial IFC model that includes multiple elements identified by their GUIDs.
 
-  return new_model
+    :param guids: List of IFC element GlobalIds to export.
+    :param model: The source ifcopenshell model.
+    :param schema: IFC schema (default: "IFC4").
+    :param write_file: Whether to write the result to a file.
+    :param file_path: Output path for the IFC file.
+    :param save_props: Whether to preserve property sets.
+    :return: New partial ifcopenshell model.
+    """
+    # Step 1: Create new basic IFC project
+    new_model, storey = create_basic_project_strcuture(model.by_guid(guids[0]), schema=schema, relationship="IfcRelAggregates")
+
+    all_nodes = set()
+    root_nodes = []
+
+    # Step 2: Traverse and collect all connected entities
+    for guid in guids:
+        entity = model.by_guid(guid)
+        if not entity:
+            print(f"Warning: Entity with GUID {guid} not found.")
+            continue
+
+        partial_graph = model.traverse(entity)
+        root_nodes.append(entity)
+        all_nodes.update(partial_graph)
+    guid_to_copy = {}
+    # Step 3: Copy elements into the new model
+    for node in all_nodes:
+        copied_entity = new_model.add(node)
+        if hasattr(node, "GlobalId") == False:
+            continue
+        guid_to_copy[node.GlobalId] = copied_entity
+        # Copy properties if requested
+        if save_props and hasattr(node, "IsDefinedBy"):
+            for prop in node.IsDefinedBy:
+                new_model.add(prop)
+    # Step 4: Link copied root nodes to storey
+    new_model.create_entity(
+        "IfcRelContainedInSpatialStructure",
+        GlobalId=ifcopenshell.guid.new(),
+        RelatingStructure=storey,
+        RelatedElements=[guid_to_copy[root.GlobalId] for root in root_nodes if root.GlobalId in guid_to_copy]
+    )
+    # Step 5: Write the model to disk
+    if write_file:
+        new_model.write(file_path)
+    return new_model

@@ -1,10 +1,11 @@
 import ifcopenshell
 import numpy as np
+import math
 from pathlib import Path
-from utils import  Graph, get_triangulated_planes
+from utils import  Graph, get_geom_info_for_check
 from traversal import get_adjacent
 from export import create_ifc_for_partial_model
-from geometry_processing import decompose_2D, angle_between, boolean_3D
+from geometry_processing import decompose_2D_from_base, angle_between, boolean_3D, get_base_curve
 import trimesh
 import collision
 import display
@@ -20,16 +21,13 @@ def main():
     # ====================================================================
     model = ifcopenshell.open(ifc_path)
     root = model.by_type("IfcProject")[0]
-    guid1 = "0js3D2vQP9PeLECr8TXDwW"
-    guid2  = "1ExlF2Qnv1QA32hRKgFhNX"
-    proxy1 = model.by_guid(guid1)
 
     # # Create a graph and establish BVH Tree
     # ====================================================================
     graph = Graph.create(root)
     graph.build_bvh()
-    node1 = graph.node_dict[guid1]
-    queries = graph.bvh_query(node1.geom_info["bbox"])
+    # node = graph.node_dict[guid]
+    # queries = graph.bvh_query(node.geom_info["bbox"])
 
     # Build the graph based on relationship
     # ====================================================================
@@ -50,7 +48,7 @@ def main():
     # ====================================================================
     # gjk_test = graph.gjk_query(guid1, guid2)
 
-    # Get all connected same type (wall and slab)
+    # Get all connected same type (wall and slab) 
     # ====================================================================
     # result = graph.merge_adjacent(guid2)
     # results = [graph.node_dict[guid] for guid in result]
@@ -66,30 +64,67 @@ def main():
     # ============================
     # temp0 = collision.create_OOBB(nodeR0, "PCA")
     # temp1 = collision.create_OOBB(nodeR1, "PCA")
-    # temp2 = collision.create_OOBB(nodeR2, "PCA")
     # print(temp0[2][1]-temp0[2][0])
     # print(temp1[2][1]-temp1[2][0]) 
-    # print(temp2[2][1]-temp2[2][0])
     # print(temp1[1])
-    # print(temp2[1])
-    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Hungarian"))
-    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Gaussian"))   
+    # Similarity Check using Hungarian / Gaussian method
+    # ============================
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-6, method = "Hungarian"))
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Gaussian")) 
     # Convex Hull Decomposition
     # ============================
-    temp = collision.create_OOBB(nodeR0, "ConvexHull")
-    print(temp[1])
+    # temp = collision.create_OOBB(nodeR0, "ConvexHull")
+    # print(temp[1])
+
+    # Get all connected same type (wall and slab)
+    # Roof elements are tested against their PCA/ Convex Hull similarity 
+    # ====================================================================
+    result_W = graph.merge_by_type("IfcWall")
+    result_S = graph.merge_by_type("IfcSlab")
+    result_R = graph.merge_by_type("IfcRoof")
+    print("Wall",result_W)
+    # print("Slab",result_S)
+    # print("Roof",result_R)
+
+    node0 = graph.node_dict["2oMNvrrQvE1uhdDRYExAXf"]
+    node1 = graph.node_dict["31_nGQTvv9ee_NlwTpsOH5"]
+    info0 = get_geom_info_for_check(node0)
+    info1 = get_geom_info_for_check(node1)
+    v0 = info0["vectors"]
+    v1 = info1["vectors"]
+    angles = angle_between(v0[1], v1[1])
+    print(v0[1])
+    print(v1[1])
+    print(angles * 180/math.pi)
+    # angles = angle_between(v0, v1)
+    # print(v0@v1.T)
+    # mask  = (np.abs(angles) < 1e-4) | (np.abs(angles - math.pi) < 1e-4)
+    # print(angles * 180/math.pi)
+    # print(mask)
+    # print(result_W["0DPk3As8fAPwVPbv4Ds3ps"])
+    # Q = model.by_guid("2e$6kGnQX60QRbpq8u7ZAq")
+    # nodeQ = graph.node_dict["2e$6kGnQX60QRbpq8u7ZAq"]
+    # print(nodeQ.geom_info)
 
     # Displaying mesh, points or vectors
     # ====================================================================
-    display.show([
-        display.mesh([nodeR0], show_edges = True),
-        display.points(temp[0]),
-        display.vector(temp[1], origin = temp[0][0])
-                  ])
+    # result = result_R
+    # node = graph.node_dict[result.keys[0]]
+    # results = result[result.values[0]]
+    # print(node)
+    # print(results)
+    # display.show([
+    #     display.mesh([nodeR0], edge_only= True),
+    #     display.points(temp[0]),
+    #     display.vector(temp[1], origin = temp[0][0], length = 5)
+    #               ])
 
     # Exporting the model after rewriting the geometry to ifc
     # ====================================================================
-    # create_ifc_for_partial_model(proxy1, model, file_path = export_path)
+    # export = []
+    # for values in result_W.values():
+    #     export.extend(values)
+    # create_ifc_for_partial_model(export, model, file_path = export_path)
 
 if __name__ == "__main__":
     main()

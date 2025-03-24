@@ -5,7 +5,7 @@ import ifcopenshell.util.shape
 import collision
 import math
 from traversal import bfs_traverse, loop_detecton
-from geometry_processing import decompose_2D, angle_between, get_base_curve
+from geometry_processing import decompose_2D_from_base, angle_between, get_base_curve
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -78,7 +78,7 @@ def np_intersect_rows(arr1, arr2):
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
-def merge_test(node, geom_type = None, geom_info = None, v1 = None, b1 = None, tolerance = 1e-3):
+def merge_test(node, geom_type, geom_info_for_check, atol = 1e-3):
   """
     Condition of merging for two nodes (wall)
     1. Same Geometry Type
@@ -96,56 +96,83 @@ def merge_test(node, geom_type = None, geom_info = None, v1 = None, b1 = None, t
   # if they are not of same type, no need check anything, imeediately return False
   if geom_type != node.geom_type:
     return False
-  # Check geometric properties
-  bbox1 = geom_info["bbox"]
-  bbox2 = node.geom_info["bbox"]
-  height1 = bbox1[1][2] - bbox1[0][2]
-  height2 = bbox2[1][2] - bbox2[0][2]
+  # Check geometric properties to compare
+  geom_info_for_check2 = get_geom_info_for_check(node)
+  if geom_info_for_check2 == False:
+    return False
   # Different Geometric check based on type
   if geom_type == "IfcWall":
-    b2 = get_base_curve(node)
+    bbox1 = geom_info_for_check["AABB"]
+    bbox2 = geom_info_for_check2["AABB"]
+    height1 = bbox1[1][2] - bbox1[0][2]
+    height2 = bbox2[1][2] - bbox2[0][2]
+    b1 = geom_info_for_check["base"]
+    v1 = geom_info_for_check["vectors"]
+    b2 = geom_info_for_check2["base"]
+    v2 = geom_info_for_check2["vectors"]
+    # Make sure they have intersecting base curve
     base_intersection = np_intersect_rows(b1,b2)
-    # traverse_direction = np.cross()
-    v2 = decompose_2D(node)
-    angles = angle_between(v1, v2)
-    mask = (angles < 1e-3) | ((angles - math.pi) < 1e-3)
+    # the -1 index is the longest vector which defines the traverse direction
+    angles = angle_between(v1[1], v2[1])
     conditions =[
-      abs(bbox1[0][2] - bbox2[0][2] )< tolerance, # Same Z location to start
-      abs(height1 - height2) < tolerance, # Same height 
+      abs(bbox1[0][2] - bbox2[0][2] )< atol, # Same Z location to start
+      abs(height1 - height2) < atol, # Same height 
       len(base_intersection) ==2,  # 2 touching vertex in base curve 
-      np.count_nonzero(np.any(mask, axis=1))>1]
+      np.abs(angles) < atol or np.abs(angles - math.pi) < atol]
   elif geom_type == "IfcSlab":
+    bbox1 = geom_info_for_check["AABB"]
+    bbox2 = geom_info_for_check2["AABB"]
+    height1 = bbox1[1][2] - bbox1[0][2]
+    height2 = bbox2[1][2] - bbox2[0][2]
     conditions = [
-      abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
-      abs(height1 - height2) < tolerance]
+      abs(bbox1[0][2] - bbox2[0][2] )< atol,
+      abs(height1 - height2) < atol]
   elif geom_type == "IfcRoof":
+    OOBB1 = geom_info_for_check["OOBB"]
+    OOBB2 = geom_info_for_check2["OOBB"]
     conditions = [
-      geom_type == node.geom_type
+      collision.check_pca_similarity(OOBB1[1], OOBB2[1], atol = 1e-3, method = "Hungarian")
   ]
   
   if all(conditions):
     return True
   return False
+def get_geom_info_for_check(node):
+  geom_info_for_check= {}
+  _type = node.geom_type
+  try:
+    if _type == "IfcWall":
+      geom_info_for_check["base"]= get_base_curve(node)
+      geom_info_for_check["vectors"] = decompose_2D_from_base(geom_info_for_check["base"])
+      geom_info_for_check["AABB"] = node.geom_info["bbox"]
+    elif _type == "IfcSlab":
+      geom_info_for_check["AABB"] = node.geom_info["bbox"]
+    elif _type == "IfcRoof":
+      geom_info_for_check["OOBB"] = collision.create_OOBB(node, "PCA")
+  except:
+    return False
+  return geom_info_for_check
 def merge(node):
   memory= {
     "T": set(),
     "F": set()
   }
-  _type = node.geom_type
-  geom_info = node.geom_info
-  b1 = get_base_curve(node)
-  v = decompose_2D(node)
-  stack = [node]
-  while stack:
-    current = stack.pop()
-    memory["T"].add(current.guid)
-    for node_n in current.near:
-      if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
-        if merge_test(node_n, _type, geom_info, v, b1):
-          stack.append(node_n)
-        else: 
-          memory["F"].add(node_n.guid)
-  return list(memory["T"])
+  geom_info_for_check= get_geom_info_for_check(node)
+  # Certain geometry are invalid for merging e.g, no 4 points etc
+  if geom_info_for_check:
+    _type = node.geom_type
+    stack = [node]
+    while stack:
+      current = stack.pop()
+      memory["T"].add(current.guid)
+      for node_n in current.near:
+        if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
+          if merge_test(node_n, _type, geom_info_for_check, atol = 1e-3):
+            stack.append(node_n)
+          else: 
+            memory["F"].add(node_n.guid)
+    return list(memory["T"])
+  return []
 def write_to_node(current_node):
   if current_node != None:
     geom_infos = get_geometry_info(current_node, get_global = True)
@@ -211,19 +238,18 @@ class Graph:
   def merge_adjacent(self, guid):
     node = self.node_dict[guid]
     return merge(node)
-  def merge_type(self, model, ifc_type):
-    memory = {}
+  def merge_by_type(self, ifc_type):
+    dict = {}
     merged = set()
-    guids = [i.GlobalId for i in model.by_type(ifc_type)]
+    guids = [key for key,value in self.node_dict.items() if value.geom_type == ifc_type]
     for guid in guids:
       if guid not in merged:
-        node = self.node_dict[guid]
-        results = merge(node)
+        results = merge(self.node_dict[guid])
         for result in results:
           merged.add(result)
         if len(results) > 1:
-          memory[guid] = results
-    return memory
+          dict[guid] = results
+    return dict
   def gjk_query(self,guid1, guid2):
     node1 = self.node_dict[guid1]
     node2 = self.node_dict[guid2]

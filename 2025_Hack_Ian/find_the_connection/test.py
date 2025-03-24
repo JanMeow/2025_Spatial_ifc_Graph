@@ -4,7 +4,7 @@ from pathlib import Path
 from utils import  Graph, get_triangulated_planes, np_intersect_rows
 from traversal import get_adjacent
 from export import create_ifc_for_partial_model
-from geometry_processing import decompose_2D, angle_between, boolean_3D, get_base_curve
+from geometry_processing import angle_between, boolean_3D
 import trimesh
 import collision
 import display
@@ -48,31 +48,23 @@ def main():
 
     # Get all connected same type (wall and slab)
     # ====================================================================
-    walls = [i.GlobalId for i in model.by_type("IfcWall")]
-    slabs = [i.GlobalId for i in model.by_type("IfcSlab")]
-    print("Walls")
-    print(graph.merge_type(model, "IfcWall"))
-    # for guid in walls:
-    #     result  = graph.merge_adjacent(guid)
-    #     print(result)
-    print("Slabs")
-    for guid in slabs:
-        result  = graph.merge_adjacent(guid)
-        print(result)
+    result_W = graph.merge_by_type("IfcWall")
+    result_S = graph.merge_by_type("IfcSlab")
+    result_R = graph.merge_by_type("IfcRoof")
+    print("Wall",result_W)
+    print("Slabs",result_S)
+    print("Roof",result_R)
 
-
-
-
-
-
-    # result = graph.merge_adjacent(guid2)
-    # results = [graph.node_dict[guid] for guid in result]
+    # Show some of the boolean Results
+    # ====================================================================
+    result = result_S
+    # display.show([
+    #     # display.mesh([node], show_edges = True),
+    #     display.points(temp[0]),
+    #     display.vector(temp[1], origin = temp[0][0])
+    #               ])
     # bool_result = [boolean_3D(results, operation="union")]
     # showMesh(bool_result)
-
-    #  Get all connected same type (inclinde geom / roof) using PCA / Convex Hull Best face
-    # ====================================================================
-    roof = [i.GlobalId for i in model.by_type("IfcRoof")]
 
     # PCA Decomposition
     # ============================
