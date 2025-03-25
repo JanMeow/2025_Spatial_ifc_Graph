@@ -18,10 +18,15 @@ def show(funcs):
    for geom in funcs:
         scene.add_geometry(geom)
    scene.show()
-def mesh(nodes, show_edges = False, edge_only = False):
+def mesh(objs, obj_type = "node", show_edges = False, edge_only = False):
    meshes = []
-   for node in nodes:
-      mesh = trimesh.Trimesh(vertices =node.geom_info["vertex"], faces =node.geom_info["faceVertexIndices"])
+   for obj in objs:
+      if obj_type == "node":
+         mesh = trimesh.Trimesh(vertices =obj.geom_info["vertex"], faces =obj.geom_info["faceVertexIndices"])
+      elif obj_type == "vf_list":
+         mesh = trimesh.Trimesh(vertices =obj[0], faces =obj[1])
+      elif obj_type == "trimesh":
+         mesh = obj
       # mesh.visual.face_colors = [50, 50, 50, 100]
       line_colour = [128, 128, 128, 150]
       if edge_only:

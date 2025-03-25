@@ -22,13 +22,11 @@ Task for the week:
 # ====================================================================
 # Helpers Functons
 # ====================================================================
-def is_xyz_extrusion(node):
-  vertex = node.geom_info["vertex"]
+def is_xyz_extrusion(vertex):
   if len(np.unique(vertex[:,2])) == 2:
     return True
   return False
-def is_xzy_box(node):
-  vertex = node.geom_info["vertex"]
+def is_xzy_box(vertex):
   for i in range(3):
     if len(np.unique(vertex[:,i])) != 2:
         return False
@@ -62,6 +60,11 @@ def project_points_on_face(points, face_normal, face):
    v = points - face[0]
    proj = np.dot(v, face_normal)[:, np.newaxis] * face_normal
    return points - proj
+def get_local_coors(T_matrix, vertex):
+    inverse = np.linalg.inv(T_matrix.T)
+    ones = np.ones(shape = (vertex.shape[0],1))
+    result = np.around(np.hstack((vertex, ones)) @ inverse, 2)
+    return result[:,0:-1]
 # ====================================================================
 # Display Functions
 # ==============================================================  ======
@@ -76,7 +79,7 @@ def colour_palette():
 # ====================================================================
 # 3D Boolean Operations
 # ====================================================================
-def boolean_3D(nodes, operation="union"):
+def boolean_3D(nodes, operation="union", return_type = "trimesh"):
     """
     Perform a boolean operation (union, intersection, difference) on multiple 3D meshes.
 
@@ -107,7 +110,10 @@ def boolean_3D(nodes, operation="union"):
     else:
         raise ValueError(f"Invalid operation type: {operation}")
 
-    return np.array(result.vertices, dtype=np.float32), np.array(result.faces, dtype=np.uint32)
+    if return_type == "trimesh":
+        return result
+    elif return_type == "vf_list":
+      return np.array(result.vertices, dtype=np.float32), np.array(result.faces, dtype=np.uint32)
 # ====================================================================
 # 2D Boolean Operations
 # ====================================================================

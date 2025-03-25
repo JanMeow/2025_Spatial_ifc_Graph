@@ -3,12 +3,12 @@ import numpy as np
 from pathlib import Path
 from utils import  Graph, get_triangulated_planes, np_intersect_rows
 from traversal import get_adjacent
-from export import create_ifc_for_partial_model
 from geometry_processing import angle_between, boolean_3D
 import trimesh
 import collision
 import display
 import math
+import export as E
 
 # ====================================================================
 ifc_folder = Path("data")/"ifc"
@@ -55,6 +55,7 @@ def main():
     print("Slabs",result_S)
     print("Roof",result_R)
 
+
     # Show some of the boolean Results
     # ====================================================================
     result = result_S
@@ -91,7 +92,7 @@ def main():
 
     # Exporting the model after rewriting the geometry to ifc
     # ====================================================================
-    # create_ifc_for_partial_model(proxy1, model, file_path = export_path)
+    # E.export(guids, model, file_path = export_path)
 
 if __name__ == "__main__":
     main()

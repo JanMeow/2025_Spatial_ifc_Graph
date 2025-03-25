@@ -5,7 +5,7 @@ import ifcopenshell.util.shape
 import collision
 import math
 from traversal import bfs_traverse, loop_detecton
-from geometry_processing import decompose_2D_from_base, angle_between, get_base_curve
+from geometry_processing import decompose_2D_from_base, angle_between, get_base_curve, get_local_coors
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -284,8 +284,9 @@ class Node:
     self.guid = guid
     self.psets = psets
     self.near = []
-  
   def intersect(node1,node2):
     bbox1 = node1.geom_info["bbox"]
     bbox2 = node2.geom_info["bbox"]
     return collision.intersect(bbox1,bbox2)
+  def get_local_coors(self):
+    return get_local_coors(self.geom_info["T_matrix"], self.geom_info["vertex"])
