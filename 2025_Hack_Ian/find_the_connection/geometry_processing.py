@@ -77,14 +77,14 @@ def showMesh(vf_list):
 def colour_palette():
    return
 # ====================================================================
-# 3D Boolean Operations
+# 3D Boolean Operations face
 # ====================================================================
 def boolean_3D(nodes, operation="union", return_type = "trimesh"):
     """
     Perform a boolean operation (union, intersection, difference) on multiple 3D meshes.
 
     Parameters:
-    - nodes (list): List of nodes containing `geom_info` with "vertex" and "faceVertexIndices".
+    - nodes (list): List of nodes containing `geom_info` with "vertex" and "face".
     - operation (str): Type of boolean operation ("union", "intersection", "difference").
 
     Returns:
@@ -97,7 +97,7 @@ def boolean_3D(nodes, operation="union", return_type = "trimesh"):
     # Convert node geometries to trimesh objects
     meshes = [
         trimesh.Trimesh(vertices=node.geom_info["vertex"], 
-                        faces=node.geom_info["faceVertexIndices"]) 
+                        faces=node.geom_info["face"]) 
         for node in nodes
     ]
 

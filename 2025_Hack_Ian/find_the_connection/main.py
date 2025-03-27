@@ -1,7 +1,7 @@
 import ifcopenshell
 import numpy as np
 from pathlib import Path
-from utils import  Graph, get_geom_info_for_check
+from utils import  Graph, get_geom_info
 from traversal import get_adjacent
 from geometry_processing import decompose_2D_from_base, angle_between, boolean_3D, get_local_coors
 import trimesh
@@ -80,7 +80,7 @@ def main():
     result_R = graph.merge_by_type("IfcRoof")
     # print("Wall",result_W)
     # print("Slab",result_S)
-    # print("Roof",result_R)
+    # print("Roof",result_R)    
     # print(nodeR0.geom_info)
 
 
@@ -88,55 +88,14 @@ def main():
     # ====================================================================
     key = list(result_W.keys())[0]
     node = graph.node_dict[key]
-    T_matrix = node.geom_info["T_matrix"]
     results = [graph.node_dict[guid] for guid in result_W[key]]
-    bool_result = [boolean_3D(results, operation="union", return_type= "vf_list")]
-    # print(bool_result[0][0])
-    local_coor = get_local_coors(T_matrix, bool_result[0][0])
-    print(get_local_coors(T_matrix, bool_result[0][0]))
-    coords_tuple = tuple(tuple(row) for row in local_coor)
-    print(coords_tuple)
+    bool_result = boolean_3D(results, operation="union", return_type= "vf_list")
+
+  
+    # Displaying mesh, points, boolean or vectors
+    # ====================================================================
     # display.show(display.mesh(bool_result, obj_type = "trimesh"))
 
-    # Change the geometry of the ifc element from the node
-    # ====================================================================
-    # id = "1QmrSv$7f8vB34GVkkI57J"
-    element = model.by_guid(key)
-    # print(node_e.geom_info)
-    ele_shape = element.Representation
-    shape_rep = ele_shape.Representations [0]  # the IfcShapeRepresentation
-    tess_item = shape_rep.Items[0]  # e.g. IfcTriangulatedFaceSet or IfcPolygonalFaceSet
-    # print(node_e.geom_info["vertex"])
-    # print(node_e.get_local_coors())    
-
-    def rewrite_ifc_geometry(model, guid, new_vf_list = None):
-        node = graph.node_dict[guid]
-        element = model.by_guid(guid)
-        ele_shape = element.Representation
-        shape_rep = ele_shape.Representations[0]
-        tess_item = shape_rep.Items[0]
-
-        if tess_item.is_a("IfcTriangulatedFaceSet") or tess_item.is_a("IfcPolygonalFaceSet"):
-            old_v = tess_item.Coordinates.CoordList
-            new_v = ""
-        print(old_v)
-        placement = element.ObjectPlacement
-        if placement and placement.is_a("IfcLocalPlacement"):
-            print(placement)
-            axis_placement = placement.RelativePlacement
-        if axis_placement.is_a("IfcAxis2Placement3D"):
-            # All these information are in the T-matrix hehe
-            origin = axis_placement.Location           # IfcCartesianPoint
-            axis   = axis_placement.Axis              # IfcDirection (optional)
-            refdir = axis_placement.RefDirection       # IfcDirection (optional)
-            # print("Origin:", origin.Coordinates)
-            # print("Axis:", axis)
-            # print("Refdir:", refdir)
-        return
-    # rewrite_ifc_geometry(model, guid = key)
-
-    # Displaying mesh, points or vectors
-    # ====================================================================
     # node = graph.node_dict[result.keys[0]]
     # results = result[result.values[0]]
     # print(node)
@@ -155,7 +114,7 @@ def main():
     # E.export(export, model, file_path = export_path)
     # model_new = E.create_basic_structure(ref= model)[0]
     # element = E.create_ifc_element_from_node(model_new, nodeR0)
-    E.export(result_W[key], model, file_path= export_path)
+    # E.export([key], model, file_path= export_path)
     # model_new.write("data/ifc/hahaha.ifc")
 
 

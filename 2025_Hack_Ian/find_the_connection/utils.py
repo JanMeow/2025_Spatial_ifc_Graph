@@ -13,13 +13,13 @@ def get_bbox(arr):
   max = np.max(arr, axis = 0)
   min = np.min(arr, axis = 0)
   return np.vstack((min,max))
-def get_geometry_info(entity, get_global = False):
+def get_geom_info(entity, get_global = False):
   if hasattr(entity, "Representation"):
     if entity.Representation != None:
       result = {
         "T_matrix": None,
         "vertex": None,
-        "faceVertexIndices": None,
+        "face": None,
         "bbox": None
       }
       try:
@@ -27,7 +27,7 @@ def get_geometry_info(entity, get_global = False):
         shape = ifcopenshell.geom.create_shape(settings, entity)
         result["T_matrix"] = ifcopenshell.util.shape.get_shape_matrix(shape)
         result["vertex"]  = np.around(ifcopenshell.util.shape.get_vertices(shape.geometry),2)
-        result["faceVertexIndices"] = ifcopenshell.util.shape.get_faces(shape.geometry)
+        result["face"] = ifcopenshell.util.shape.get_faces(shape.geometry)
 
         if get_global:
           vertex = result["vertex"]
@@ -60,7 +60,7 @@ def get_triangulated_planes(node):
       return None
     geom_info =  node.geom_info
     vertex = geom_info["vertex"]
-    vertex_indices = geom_info["faceVertexIndices"]
+    vertex_indices = geom_info["face"]
 
     arr_shape = (vertex_indices.shape[0], vertex_indices.shape[1], vertex.shape[1])
     array = np.zeros(arr_shape, dtype = np.float32)
@@ -175,7 +175,7 @@ def merge(node):
   return []
 def write_to_node(current_node):
   if current_node != None:
-    geom_infos = get_geometry_info(current_node, get_global = True)
+    geom_infos = get_geom_info(current_node, get_global = True)
     if geom_infos != None:
       psets = ifcopenshell.util.element.get_psets(current_node)
       node = Node(current_node.Name, current_node.is_a(), current_node.GlobalId, geom_infos, psets)

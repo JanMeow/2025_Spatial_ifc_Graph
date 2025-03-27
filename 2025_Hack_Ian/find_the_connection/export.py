@@ -3,6 +3,9 @@ import ifcopenshell
 import ifcopenshell.api
 import ifcopenshell.util
 import ifcopenshell.util.element as element
+from geometry_processing import get_local_coors
+from collections import deque
+import numpy as np
 # ====================================================================
 #  Functons for exporting partial IFC model
 # ====================================================================
@@ -61,42 +64,76 @@ def wrap_ifc_value(model, val):
       # For bool or other types, adapt to your needs.
       # We can just treat it as text, or skip.
       return model.create_entity("IfcLabel", str(val))
-def check_for_file_references(entity, visited=None):
-    """Recursively walk all attributes to see if anything references a file object."""
-    if visited is None:
-        visited = set()
-    if entity in visited:
-        return
-    visited.add(entity)
-
-    info = entity.get_info()
-    for attr_name, attr_val in info.items():
-        if isinstance(attr_val, ifcopenshell.file):
-            print(f"WARNING: Found a direct reference to file in '{entity}' at attribute '{attr_name}'")
-        elif isinstance(attr_val, ifcopenshell.entity_instance):
-            check_for_file_references(attr_val, visited)
-        elif isinstance(attr_val, list):
-            for v in attr_val:
-                if isinstance(v, ifcopenshell.entity_instance):
-                    check_for_file_references(v, visited)
+def reset_placement_to_origin(model, element):
+    origin = model.create_entity("IfcCartesianPoint", Coordinates=[0.0, 0.0, 0.0])
+    placement_3d = model.create_entity("IfcAxis2Placement3D", Location=origin)
+    local_placement = model.create_entity("IfcLocalPlacement", RelativePlacement=placement_3d)
+    element.ObjectPlacement = local_placement
 # ====================================================================
-def create_basic_structure(ref = None, schema = "IFC4"):
+def copy_spatial_structure(old_model, new_model, old_object):
+    # Step A: Copy the current object
+    new_object = copy_entity(new_model, old_object)
+    # Step B: For each 'IfcRelAggregates' in old_object.IsDecomposedBy
+    #         we create a new relationship that references all child copies at once
+    for old_rel in old_object.IsDecomposedBy:
+        # We only want relationships that are actually a decomposition
+        if old_rel.is_a("IfcRelAggregates"):
+            # Gather the new copies of all child objects
+            new_children = []
+            for old_child in old_rel.RelatedObjects:
+                new_child = copy_spatial_structure(old_model, new_model, old_child)
+                new_children.append(new_child)
+            
+            # Now create a new relationship in the new model, referencing parent + children
+            new_rel = copy_rel(new_model, old_rel, new_object, new_children)
+    # Return the new copy of this object to the caller
+    return new_object
+def copy_project_structure(old_model):
+    new_model = ifcopenshell.file(schema=old_model.schema)
+    old_project = old_model.by_type("IfcProject")[0]
+    new_project = copy_spatial_structure(old_model, new_model, old_project)
+    return new_model
+def copy_entity(new_model, current_entity):
+    # Copy shallow spatial structure entities
+    attrs = current_entity.get_info()
+    entity_type = attrs.pop("type") 
+    attrs.pop("id") 
+    return new_model.create_entity(entity_type, **attrs)
+def copy_rel(new_model, rel, relating, related):
+    return new_model.create_entity(
+        "IfcRelAggregates",
+        GlobalId=rel.GlobalId,
+        RelatingObject=relating,
+        RelatedObjects=related
+    )
+def copy_element_props_subgraph(old_model, new_model, guid):
+    old_element = old_model.by_guid(guid)
+    subgraph = old_model.traverse(old_element)
+    skip_root_types = ["IfcProject", "IfcSite", "IfcBuilding", "IfcBuildingStorey" ,"IfcGeometricRepresentationContext"]
+    for obj in subgraph[1:]:
+        if obj.is_a("IfcRoot"):
+            if obj.is_a() in skip_root_types:
+                # do not copy project, site, building, storey, or context
+                continue
+            # If it's not skipped, check if we already have an object with that GlobalId
+            if new_model.by_guid(obj.GlobalId):
+                continue
+            # Then add it
+            new_model.add(obj)
+        else:
+            new_model.add(obj)
+    return 
+def create_project_structure( schema = "IFC4"):
     new_model = ifcopenshell.file(schema = schema)
     spatial_hierachy = ["IfcProject","IfcSite", "IfcBuilding", "IfcBuildingStorey"]
-    if ref:
-        project = ref.by_type("IfcProject")[0]
-        element.copy_deep(ref, new_model, project)
-        context = ref.by_type("IfcGeometricRepresentationContext")[0]
-    else:
-        project = new_model.create_entity("IfcProject", GlobalId=ifcopenshell.guid.new(), Name="Sample Project", owner_history = create_owner_history(new_model))
-        context = new_model.create_entity("IfcGeometricRepresentationContext", ContextType="Model", ContextIdentifier="Building Model")
+
     # Create_basic_skeleton
     def create():
         prev = None
         for item in spatial_hierachy:
             if item == "IfcProject":
-                new_spatial_layer = project
-                new_spatial_layer.RepresentationContexts = [context]
+                new_spatial_layer = new_model.create_entity("IfcProject", GlobalId=ifcopenshell.guid.new(), Name="Sample Project", OwnerHistory = create_owner_history(new_model))
+                new_spatial_layer.RepresentationContexts = [new_model.create_entity("IfcGeometricRepresentationContext", ContextType="Model", ContextIdentifier="Building Model")]
             else:
                 new_spatial_layer = new_model.create_entity(item, GlobalId=ifcopenshell.guid.new(), Name= "Sample" + item)
             if prev != None:
@@ -104,9 +141,12 @@ def create_basic_structure(ref = None, schema = "IFC4"):
             prev = new_spatial_layer
         return new_model, prev
     return create()
-def export(guids, model, file_path, save_props=True):
+def export(guids, model, file_path, save_props=True, take_ref = False):
     # Step 1: Create new basic IFC project
-    new_model, storey = create_basic_structure(ref=model)
+    if take_ref:
+        new_model, storey = create_project_structure(ref=model)
+    else:
+        new_model, storey = create_project_structure()
     all_nodes = set()
     root_nodes = []
     # Step 2: Traverse and collect all connected entities
@@ -136,90 +176,159 @@ def export(guids, model, file_path, save_props=True):
         RelatingStructure=storey,
         RelatedElements=[guid_to_copy[root.GlobalId] for root in root_nodes if root.GlobalId in guid_to_copy]
     )
-    # Step 5: Write the model to disk
     new_model.write(file_path)
     return new_model
 # ====================================================================
 # Creating new ifc geometry
 # ====================================================================
-def create_ifc_element_from_node(model, node):
-    """
-    Create an IFC element with geometry and property sets.
-
-    :param model: ifcopenshell.file() object.
-    :param element_type: e.g., "IfcWall", "IfcSlab", "IfcRoof"
-    :param geom_info: dict with keys: T_matrix, vertex, faceVertexIndices, bbox
-    :param psets: dict structured IFC property sets
-    :param context: optional IfcGeometricRepresentationContext
-    :return: The created IFC product
-    """
-    if  len(model.by_type("IfcGeometricRepresentationContext")) == 0:
-        context = ifcopenshell.api.run("context.add_context", model, context_type="Model")
-    else:
-      context = model.by_type("IfcGeometricRepresentationContext")[0]
-
-
-    # Step 1: Create the element
-    element = model.create_entity(
-        node.geom_type,
-        GlobalId=node.guid,
-        Name= node.name
-    )
-    # Step 2: Create the mesh geometry
-    verts = node.geom_info["vertex"]
-    faces = node.geom_info["faceVertexIndices"]
-    # Create IfcCartesianPoints
-    points = [model.create_entity("IfcCartesianPoint", Coordinates=pt.tolist()) for pt in verts]
-    # Create IfcPolyLoops from face indices
-    faces_loops = []
-    for tri in faces:
-        loop = model.create_entity("IfcPolyLoop", Polygon=[points[i] for i in tri])
-        face_bound = model.create_entity("IfcFaceOuterBound", Bound=loop, Orientation=True)
-        face = model.create_entity("IfcFace", Bounds=[face_bound])
-        faces_loops.append(face)
-    face_set = model.create_entity("IfcConnectedFaceSet", CfsFaces=faces_loops)
-    shell = model.create_entity("IfcClosedShell", CfsFaces=faces_loops)
-    shape_representation = model.create_entity(
+def create_shape(new_model, entity,vertices, faces):
+    vertex_list = vertices.astype(float).tolist()
+    # IFC requires 1-based indices
+    face_list = (faces + 1).astype(int).tolist()
+    # === Create IfcCartesianPointList3D
+    point_list = new_model.create_entity("IfcCartesianPointList3D", CoordList=vertex_list)
+    # === Create IfcTriangulatedFaceSet
+    face_set = new_model.create_entity(
+        "IfcTriangulatedFaceSet",
+        Coordinates=point_list,
+        CoordIndex=face_list,
+        Closed=True)
+    # === Create IfcShapeRepresentation
+    context = new_model.by_type("IfcGeometricRepresentationContext")[0]
+    shape_rep = new_model.create_entity(
         "IfcShapeRepresentation",
         ContextOfItems=context,
         RepresentationIdentifier="Body",
-        RepresentationType="Faceted_Brep",
-        Items=[model.create_entity("IfcFacetedBrep", Outer=shell)]
-    )
-    product_shape = model.create_entity("IfcProductDefinitionShape", Representations=[shape_representation])
-    element.Representation = product_shape
-    # Step 3: Place the element in 3D space
-    transform = node.geom_info["T_matrix"]
-    loc = model.create_entity("IfcCartesianPoint", Coordinates=transform[:3, 3].tolist())
-    axis = model.create_entity("IfcDirection", DirectionRatios=transform[:3, 2].tolist())
-    ref_direction = model.create_entity("IfcDirection", DirectionRatios=transform[:3, 1].tolist())
-    placement = model.create_entity(
-        "IfcAxis2Placement3D",
-        Location=loc,
-        Axis=axis,
-        RefDirection=ref_direction
-    )
-    local_placement = model.create_entity(
-    "IfcLocalPlacement",
-    PlacementRelTo=None,
-    RelativePlacement=placement
-    )
-    element.ObjectPlacement = local_placement
-    # Step 4: Add Property Sets
-    for pset_name, props in node.psets.items():
-        prop_list = []
-        for key, val in props.items():
-            if isinstance(val, (int, float,str)):
-                val_ifc = wrap_ifc_value(model, val)
-                prop = model.create_entity("IfcPropertySingleValue", Name=key, NominalValue=val_ifc)
+        RepresentationType="Tessellation",
+        Items=[face_set])
+    # === Create IfcProductDefinitionShape
+    prod_def_shape = new_model.create_entity("IfcProductDefinitionShape", Representations=[shape_rep])
+    # === Replace the geometry on the element
+    entity.Representation = prod_def_shape
+    return 
+# ====================================================================
+# Extracting properties from old model to new model
+# ====================================================================
+def extract_properties(old_model, new_model, guid):
+    old_entity = old_model.by_guid(guid)
+    new_entity = new_model.by_guid(guid)
+    # Go through all relationships that define property sets
+    for rel in getattr(old_entity, "IsDefinedBy", []):
+        if not rel.is_a("IfcRelDefinesByProperties"):
+            continue
+        old_pset = rel.RelatingPropertyDefinition
+        new_pset = _copy_single_pset(old_pset, new_model)
+        if new_pset:
+            # Create a brand-new relationship in new_model
+            new_model.create_entity(
+                "IfcRelDefinesByProperties",
+                GlobalId=rel.GlobalId,
+                RelatedObjects=[new_entity],
+                RelatingPropertyDefinition=new_pset)
+    return
+def _copy_single_pset(old_pset, new_model):
+    """Copy a single pset or quantity set from old_pset to new_model."""
+    if not old_pset:
+        return None
+    # Already copied?
+    if hasattr(old_pset, "GlobalId"):
+        try:
+            existing = new_model.by_guid(old_pset.GlobalId)
+            if existing:
+                return existing
+        except:
+            if old_pset.is_a("IfcTypeObject"):
+                print("hhahaha")
+                return None
+            if old_pset.is_a("IfcPropertySet"):
+                return _copy_ifc_property_set(old_pset, new_model)
+            elif old_pset.is_a("IfcElementQuantity"):
+                return _copy_ifc_element_quantity(old_pset, new_model)
             else:
-                continue
-            prop_list.append(prop)
-        pset = model.create_entity("IfcPropertySet", Name=pset_name, HasProperties=prop_list)
-        model.create_entity(
-            "IfcRelDefinesByProperties",
-            GlobalId=ifcopenshell.guid.new(),
-            RelatedObjects=[element],
-            RelatingPropertyDefinition=pset
+                # Can expand to handle more property set types
+                print(f"Skipping Pset type: {old_pset.is_a()}")
+                return None
+def _copy_ifc_property_set(old_pset, new_model):
+    """Copies an IfcPropertySet and its IfcPropertySingleValue objects."""
+    new_properties = []
+    for prop in old_pset.HasProperties:
+        if prop.is_a("IfcPropertySingleValue"):
+            new_prop = new_model.create_entity(
+                "IfcPropertySingleValue",
+                Name=prop.Name,
+                Description=prop.Description,
+                NominalValue=prop.NominalValue,
+                Unit=prop.Unit
+            )
+            new_properties.append(new_prop)
+        else:
+            # Could handle IfcComplexProperty, etc., if needed
+            pass
+
+    new_pset = new_model.create_entity(
+        "IfcPropertySet",
+        GlobalId=old_pset.GlobalId,
+        Name=old_pset.Name,
+        Description=old_pset.Description,
+        HasProperties=new_properties
+    )
+    return new_pset
+def _copy_ifc_element_quantity(old_eq, new_model):
+    """Copies an IfcElementQuantity and its IfcPhysicalQuantity sub-objects."""
+    new_quantities = []
+    for q in old_eq.Quantities:
+        # e.g. IfcQuantityLength, IfcQuantityArea, IfcQuantityVolume, ...
+        new_q = new_model.create_entity(
+            q.is_a(),
+            Name=q.Name,
+            Description=q.Description,
+            Unit=q.Unit,
+            # Each quantity type has its own attribute (LengthValue, AreaValue, etc.)
+            LengthValue=getattr(q, "LengthValue", None),
+            AreaValue=getattr(q, "AreaValue", None),
+            VolumeValue=getattr(q, "VolumeValue", None),
+            # etc. for other quantity subtypes
         )
+        new_quantities.append(new_q)
+
+    new_elem_qty = new_model.create_entity(
+        "IfcElementQuantity",
+        GlobalId=old_eq.GlobalId,
+        Name=old_eq.Name,
+        Description=old_eq.Description,
+        MethodOfMeasurement=old_eq.MethodOfMeasurement,
+        Quantities=new_quantities
+    )
+    return new_elem_qty
+# ====================================================================
+# Combining extracting psets and crearing new shape representation
+# ====================================================================
+def get_container_rel(model, guid):
+    for rel in model.by_type("IfcRelContainedInSpatialStructure"):
+        if guid in [e.GlobalId for e in rel.RelatedElements]:
+            return rel
+    return None
+def assign_to_container(old_model, new_model, guid):
+    old_rel = get_container_rel(old_model, guid)
+    old_container = old_rel.RelatingStructure
+    new_container = new_model.by_guid(old_container.GlobalId)
+    new_entity = new_model.by_guid(guid)
+    if new_container:
+        new_model.create_entity("IfcRelContainedInSpatialStructure", 
+                                GlobalId=old_rel.GlobalId, 
+                                RelatingStructure=new_container, 
+                                RelatedElements=[new_entity])
+    else:
+        print(f"Warning: Could not find container for element {guid}.")
+        return 
+def modify_element_to_model(old_model, new_model, guid, vertices=None, faces=None):
+    old_entity = old_model.by_guid(guid)
+    new_entity =  copy_entity(new_model, old_entity)
+    # # === Copy properties from the old element: still working on it
+    # extract_properties(old_model, new_model, guid)
+    # === Create shape representation for the element
+    create_shape(new_model, new_entity,vertices, faces)
+    # === Attach new element to same spatial container
+    assign_to_container(old_model, new_model, guid)
+    print(f"✅ Created new ifc entity for element {guid} with {len(vertices)} vertices and {len(faces)} faces.")
     return element

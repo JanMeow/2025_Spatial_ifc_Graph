@@ -22,7 +22,7 @@ def mesh(objs, obj_type = "node", show_edges = False, edge_only = False):
    meshes = []
    for obj in objs:
       if obj_type == "node":
-         mesh = trimesh.Trimesh(vertices =obj.geom_info["vertex"], faces =obj.geom_info["faceVertexIndices"])
+         mesh = trimesh.Trimesh(vertices =obj.geom_info["vertex"], faces =obj.geom_info["face"])
       elif obj_type == "vf_list":
          mesh = trimesh.Trimesh(vertices =obj[0], faces =obj[1])
       elif obj_type == "trimesh":

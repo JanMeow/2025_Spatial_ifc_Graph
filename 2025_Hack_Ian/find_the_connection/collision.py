@@ -137,7 +137,7 @@ def ooBB_convex_hull(faces,vertices):
     return
 def create_OOBB(node, method):
     vertices = node.geom_info["vertex"]
-    fv_index = node.geom_info["faceVertexIndices"]
+    fv_index = node.geom_info["face"]
     faces = vertices[fv_index]
     if method == "PCA":
         return oobb_pca(vertices) 
