@@ -86,11 +86,14 @@ def main():
 
     # Boolean Operation
     # ====================================================================
-    key = list(result_W.keys())[0]
-    node = graph.node_dict[key]
-    results = [graph.node_dict[guid] for guid in result_W[key]]
-    bool_result = boolean_3D(results, operation="union", return_type= "vf_list")
-
+    new_model = E.copy_project_structure(model)
+    result = result_W | result_S | result_R
+    bool_results = []
+    for key, values in result.items():
+        nodes = [graph.node_dict[guid] for guid in values]
+        bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
+        bool_results.append(bool_result)
+        # E.modify_element_to_model(model, new_model, key, vertices=bool_result[0], faces= bool_result[1])
   
     # Displaying mesh, points, boolean or vectors
     # ====================================================================
