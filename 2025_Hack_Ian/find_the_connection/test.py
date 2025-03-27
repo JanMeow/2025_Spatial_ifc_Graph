@@ -3,16 +3,17 @@ import numpy as np
 from pathlib import Path
 from utils import  Graph, get_geom_info
 from traversal import get_adjacent
-from geometry_processing import decompose_2D_from_base, angle_between, boolean_3D, get_local_coors
+from geometry_processing import angle_between, boolean_3D
 import trimesh
 import collision
 import display
+import math
 import export as E
 
 # ====================================================================
 ifc_folder = Path("data")/"ifc"
 ifc_folder.mkdir(parents=True, exist_ok=True)
-ifc_path = ifc_folder/"test1.ifc"
+ifc_path = ifc_folder/"test2.ifc"
 export_path = "data/ifc/new_model.ifc"
 
 def main():
@@ -25,8 +26,6 @@ def main():
     # ====================================================================
     graph = Graph.create(root)
     graph.build_bvh()
-    # node = graph.node_dict[guid]
-    # queries = graph.bvh_query(node.geom_info["bbox"])
 
     # Build the graph based on relationship
     # ====================================================================
@@ -47,44 +46,31 @@ def main():
     # ====================================================================
     # gjk_test = graph.gjk_query(guid1, guid2)
 
-    #  Get all connected same type (inclinde geom / roof) using PCA / Convex Hull Best face
-    # ====================================================================
-    r0 = "1QmrSv$7f8vB34GVkkI57J"
-    r1 = "0TAmI$AOf2HOFYvSNZEV2u"
-    r2 = "0zlLHiur1ElR$u0pjr99AU"
-    nodeR0 = graph.node_dict[r0]
-    nodeR1 = graph.node_dict[r1]
-    nodeR2 = graph.node_dict[r2]
     # PCA Decomposition
     # ============================
-    # temp0 = collision.create_OOBB(nodeR0, "PCA")
-    # temp1 = collision.create_OOBB(nodeR1, "PCA")
+    # temp = collision.create_OOBB(nodeR0, "PCA")
     # print(temp0[2][1]-temp0[2][0])
     # print(temp1[2][1]-temp1[2][0]) 
+    # print(temp2[2][1]-temp2[2][0])
     # print(temp1[1])
-    # Similarity Check using Hungarian / Gaussian method
-    # ============================
-    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-6, method = "Hungarian"))
-    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Gaussian")) 
+    # print(temp2[1])
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Hungarian"))
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Gaussian"))   
     # Convex Hull Decomposition
     # ============================
     # temp = collision.create_OOBB(nodeR0, "ConvexHull")
     # print(temp[1])
 
     # Get all connected same type (wall and slab)
-    # Roof elements are tested against their PCA/ Convex Hull similarity 
     # ====================================================================
     result_W = graph.merge_by_type("IfcWall")
     result_S = graph.merge_by_type("IfcSlab")
-    # This does not work on test1.ifc because no elements are typed ifcroof
     result_R = graph.merge_by_type("IfcRoof")
-    # print("Wall",result_W)
-    # print("Slab",result_S)
-    # print("Roof",result_R)    
-    # print(nodeR0.geom_info)
+    print("Wall",result_W)
+    print("Slabs",result_S)
+    print("Roof",result_R)
 
-
-    # Boolean Operation
+    # Boolean Operations and export to ifc for viewing
     # ====================================================================
     new_model = E.copy_project_structure(model)
     result = result_W | result_S | result_R
@@ -93,32 +79,33 @@ def main():
         nodes = [graph.node_dict[guid] for guid in values]
         bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
         bool_results.append(bool_result)
-        # E.modify_element_to_model(model, new_model, key, vertices=bool_result[0], faces= bool_result[1])
-  
-    # Displaying mesh, points, boolean or vectors
-    # ====================================================================
-    # display.show(display.mesh(bool_result, obj_type = "trimesh"))
+        E.modify_element_to_model(model, new_model, key, vertices=bool_result[0], faces= bool_result[1])
 
-    # node = graph.node_dict[result.keys[0]]
-    # results = result[result.values[0]]
-    # print(node)
-    # print(results)
+    new_model.write("data/ifc/meow1.ifc")
+    # Adding other parts that are not booleaned
+    # ============================
+    booled = [item for sublist in result.values() for item in sublist ]
+    for key,value in graph.node_dict.items():
+        if key not in booled:
+            print(value.psets)
+            # Use the original geometry and rebuild
+            E.modify_element_to_model(model, new_model, key, value.geom_info["vertex"], value.geom_info["face"])
+    new_model.write("data/ifc/meow2.ifc")
+
+
+    # Displaying particular boolean/mesh/points in custom viewer
+    # ====================================================================
+    # display.show(
+    #     display.mesh(bool_results, obj_type = "vf_list")
+    #)
+
     # display.show([
-    #     display.mesh([nodeR0], edge_only= True),
+    #     # display.mesh([node], show_edges = True),
     #     display.points(temp[0]),
-    #     display.vector(temp[1], origin = temp[0][0], length = 1)
+    #     display.vector(temp[1], origin = temp[0][0])
     #               ])
-
-    # Exporting the model after rewriting the geometry to ifc
-    # ====================================================================
-    # export = []
-    # for values in result_W.values():
-    #     export.extend(values)
-    # E.export(export, model, file_path = export_path)
-    # model_new = E.create_basic_structure(ref= model)[0]
-    # element = E.create_ifc_element_from_node(model_new, nodeR0)
-    # E.export([key], model, file_path= export_path)
-    # model_new.write("data/ifc/hahaha.ifc")
+    # bool_result = [boolean_3D(results, operation="union")]
+    # showMesh(bool_result)
 
 
 if __name__ == "__main__":

@@ -22,13 +22,11 @@ Task for the week:
 # ====================================================================
 # Helpers Functons
 # ====================================================================
-def is_xyz_extrusion(node):
-  vertex = node.geom_info["vertex"]
+def is_xyz_extrusion(vertex):
   if len(np.unique(vertex[:,2])) == 2:
     return True
   return False
-def is_xzy_box(node):
-  vertex = node.geom_info["vertex"]
+def is_xzy_box(vertex):
   for i in range(3):
     if len(np.unique(vertex[:,i])) != 2:
         return False
@@ -40,25 +38,33 @@ def get_base_curve(node):
   lowest_z = node.geom_info["bbox"][0][2]
   return vertex[vertex[:,2] == lowest_z]
 def decompose_2D(node):
-   base = get_base_curve(node)
-   vs = np.array([base[1]- base[0],base[2] - base[1]])
-   scalars = np.linalg.norm(vs, axis = 1)
-   sorted_idx = np.argsort(scalars)
-   return vs[sorted_idx], scalars[sorted_idx]
+  base = get_base_curve(node)
+  vs = np.array([base[1]- base[0],base[2] - base[1]])
+  return vs/ np.linalg.norm(vs, axis = 1)[:, np.newaxis]
+def decompose_2D_from_base(base):
+  vs = np.array([base[1]- base[0],base[2] - base[1]])
+  scalars = np.linalg.norm(vs, axis = 1)
+  sort_indices = np.argsort(np.linalg.norm(vs, axis = 1))
+  return vs[sort_indices]
 def get_unit_vector(v):
   return v/np.linalg.norm(v)
 def get_normal(faces):
-    v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]
+    v0, v1, v2 = faces[:,0], faces[:,1], faces[:,2]  
     n = np.cross(v1 - v0, v2 - v0)
     return n/np.linalg.norm(n)
 def angle_between(v1, v2):
-  v1_u = get_unit_vector(v1)
-  v2_u = get_unit_vector(v2)
-  return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+  v1_u = v1/np.linalg.norm(v1)
+  v2_u = v2/np.linalg.norm(v2)
+  return np.arccos(np.clip(np.dot(v1_u, v2_u.T), -1.0, 1.0))
 def project_points_on_face(points, face_normal, face):
    v = points - face[0]
    proj = np.dot(v, face_normal)[:, np.newaxis] * face_normal
    return points - proj
+def get_local_coors(T_matrix, vertex):
+    inverse = np.linalg.inv(T_matrix.T)
+    ones = np.ones(shape = (vertex.shape[0],1))
+    result = np.around(np.hstack((vertex, ones)) @ inverse, 2)
+    return result[:,0:-1]
 # ====================================================================
 # Display Functions
 # ==============================================================  ======
@@ -71,14 +77,14 @@ def showMesh(vf_list):
 def colour_palette():
    return
 # ====================================================================
-# 3D Boolean Operations
+# 3D Boolean Operations face
 # ====================================================================
-def boolean_3D(nodes, operation="union"):
+def boolean_3D(nodes, operation="union", return_type = "trimesh"):
     """
     Perform a boolean operation (union, intersection, difference) on multiple 3D meshes.
 
     Parameters:
-    - nodes (list): List of nodes containing `geom_info` with "vertex" and "faceVertexIndices".
+    - nodes (list): List of nodes containing `geom_info` with "vertex" and "face".
     - operation (str): Type of boolean operation ("union", "intersection", "difference").
 
     Returns:
@@ -91,7 +97,7 @@ def boolean_3D(nodes, operation="union"):
     # Convert node geometries to trimesh objects
     meshes = [
         trimesh.Trimesh(vertices=node.geom_info["vertex"], 
-                        faces=node.geom_info["faceVertexIndices"]) 
+                        faces=node.geom_info["face"]) 
         for node in nodes
     ]
 
@@ -104,7 +110,10 @@ def boolean_3D(nodes, operation="union"):
     else:
         raise ValueError(f"Invalid operation type: {operation}")
 
-    return np.array(result.vertices, dtype=np.float32), np.array(result.faces, dtype=np.uint32)
+    if return_type == "trimesh":
+        return result
+    elif return_type == "vf_list":
+      return np.array(result.vertices, dtype=np.float32), np.array(result.faces, dtype=np.uint32)
 # ====================================================================
 # 2D Boolean Operations
 # ====================================================================

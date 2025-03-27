@@ -5,7 +5,7 @@ import ifcopenshell.util.shape
 import collision
 import math
 from traversal import bfs_traverse, loop_detecton
-from geometry_processing import decompose_2D, angle_between
+from geometry_processing import decompose_2D_from_base, angle_between, get_base_curve, get_local_coors
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -13,13 +13,13 @@ def get_bbox(arr):
   max = np.max(arr, axis = 0)
   min = np.min(arr, axis = 0)
   return np.vstack((min,max))
-def get_geometry_info(entity, get_global = False):
+def get_geom_info(entity, get_global = False):
   if hasattr(entity, "Representation"):
     if entity.Representation != None:
       result = {
         "T_matrix": None,
         "vertex": None,
-        "faceVertexIndices": None,
+        "face": None,
         "bbox": None
       }
       try:
@@ -27,7 +27,7 @@ def get_geometry_info(entity, get_global = False):
         shape = ifcopenshell.geom.create_shape(settings, entity)
         result["T_matrix"] = ifcopenshell.util.shape.get_shape_matrix(shape)
         result["vertex"]  = np.around(ifcopenshell.util.shape.get_vertices(shape.geometry),2)
-        result["faceVertexIndices"] = ifcopenshell.util.shape.get_faces(shape.geometry)
+        result["face"] = ifcopenshell.util.shape.get_faces(shape.geometry)
 
         if get_global:
           vertex = result["vertex"]
@@ -54,14 +54,13 @@ def get_triangulated_equation(A, B, C):
     # Print(equation)
     print(f"Plane equation: {A}x + {B}y + {C}z + {D} = 0")
     return A, B, C, D
-
 def get_triangulated_planes(node):
     if node.geom_info == None:
       print("Node has no geometry")
       return None
     geom_info =  node.geom_info
     vertex = geom_info["vertex"]
-    vertex_indices = geom_info["faceVertexIndices"]
+    vertex_indices = geom_info["face"]
 
     arr_shape = (vertex_indices.shape[0], vertex_indices.shape[1], vertex.shape[1])
     array = np.zeros(arr_shape, dtype = np.float32)
@@ -70,11 +69,16 @@ def get_triangulated_planes(node):
         v_stack = np.vstack((A,B,C))
         array[i] = v_stack
     return array
+def np_intersect_rows(arr1, arr2):
+        set1 = set(map(tuple, arr1))
+        set2 = set(map(tuple, arr2))
+        shared = set1.intersection(set2)
+        return np.array(list(shared))
 
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
-def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, tolerance = 0.01):
+def merge_test(node, geom_type, geom_info_for_check, atol = 1e-3):
   """
     Condition of merging for two nodes (wall)
     1. Same Geometry Type
@@ -89,54 +93,89 @@ def merge_test(node, geom_type = None, geom_info = None, v1 = None, l1 = None, t
     1. test upper plane the same
     2. same thickness
   """
-  v2,l2 = decompose_2D(node)
-  bbox1 = geom_info["bbox"]
-  bbox2 = node.geom_info["bbox"]
-  height1 = bbox1[1][2] - bbox1[0][2]
-  height2 = bbox2[1][2] - bbox2[0][2]
-  angle = angle_between(v1[1], v2[1])
-
+  # if they are not of same type, no need check anything, imeediately return False
+  if geom_type != node.geom_type:
+    return False
+  # Check geometric properties to compare
+  geom_info_for_check2 = get_geom_info_for_check(node)
+  if geom_info_for_check2 == False:
+    return False
+  # Different Geometric check based on type
   if geom_type == "IfcWall":
+    bbox1 = geom_info_for_check["AABB"]
+    bbox2 = geom_info_for_check2["AABB"]
+    height1 = bbox1[1][2] - bbox1[0][2]
+    height2 = bbox2[1][2] - bbox2[0][2]
+    b1 = geom_info_for_check["base"]
+    v1 = geom_info_for_check["vectors"]
+    b2 = geom_info_for_check2["base"]
+    v2 = geom_info_for_check2["vectors"]
+    # Make sure they have intersecting base curve
+    base_intersection = np_intersect_rows(b1,b2)
+    # the -1 index is the longest vector which defines the traverse direction
+    angles = angle_between(v1[1], v2[1])
     conditions =[
-      geom_type == node.geom_type,
-      abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
-      abs(height1 - height2) < tolerance,
-      abs(l1[0] - l2[0]) < tolerance,
-      angle < tolerance or angle - math.pi < tolerance]
+      abs(bbox1[0][2] - bbox2[0][2] )< atol, # Same Z location to start
+      abs(height1 - height2) < atol, # Same height 
+      len(base_intersection) ==2,  # 2 touching vertex in base curve 
+      np.abs(angles) < atol or np.abs(angles - math.pi) < atol]
   elif geom_type == "IfcSlab":
+    bbox1 = geom_info_for_check["AABB"]
+    bbox2 = geom_info_for_check2["AABB"]
+    height1 = bbox1[1][2] - bbox1[0][2]
+    height2 = bbox2[1][2] - bbox2[0][2]
     conditions = [
-      geom_type == node.geom_type,
-      abs(bbox1[0][2] - bbox2[0][2] )< tolerance,
-      abs(height1 - height2) < tolerance]
+      abs(bbox1[0][2] - bbox2[0][2] )< atol,
+      abs(height1 - height2) < atol]
   elif geom_type == "IfcRoof":
+    OOBB1 = geom_info_for_check["OOBB"]
+    OOBB2 = geom_info_for_check2["OOBB"]
     conditions = [
-      geom_type == node.geom_type
+      collision.check_pca_similarity(OOBB1[1], OOBB2[1], atol = 1e-3, method = "Hungarian")
   ]
+  
   if all(conditions):
     return True
   return False
+def get_geom_info_for_check(node):
+  geom_info_for_check= {}
+  _type = node.geom_type
+  try:
+    if _type == "IfcWall":
+      geom_info_for_check["base"]= get_base_curve(node)
+      geom_info_for_check["vectors"] = decompose_2D_from_base(geom_info_for_check["base"])
+      geom_info_for_check["AABB"] = node.geom_info["bbox"]
+    elif _type == "IfcSlab":
+      geom_info_for_check["AABB"] = node.geom_info["bbox"]
+    elif _type == "IfcRoof":
+      geom_info_for_check["OOBB"] = collision.create_OOBB(node, "PCA")
+  except:
+    return False
+  return geom_info_for_check
 def merge(node):
   memory= {
     "T": set(),
     "F": set()
   }
-  _type = node.geom_type
-  geom_info = node.geom_info
-  v,l = decompose_2D(node)
-  stack = [node]
-  while stack:
-    current = stack.pop()
-    memory["T"].add(current.guid)
-    for node_n in current.near:
-      if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
-        if merge_test(node_n, _type, geom_info, v, l):
-          stack.append(node_n)
-        else:
-          memory["F"].add(node_n.guid)
-  return list(memory["T"])
+  geom_info_for_check= get_geom_info_for_check(node)
+  # Certain geometry are invalid for merging e.g, no 4 points etc
+  if geom_info_for_check:
+    _type = node.geom_type
+    stack = [node]
+    while stack:
+      current = stack.pop()
+      memory["T"].add(current.guid)
+      for node_n in current.near:
+        if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
+          if merge_test(node_n, _type, geom_info_for_check, atol = 1e-3):
+            stack.append(node_n)
+          else: 
+            memory["F"].add(node_n.guid)
+    return list(memory["T"])
+  return []
 def write_to_node(current_node):
   if current_node != None:
-    geom_infos = get_geometry_info(current_node, get_global = True)
+    geom_infos = get_geom_info(current_node, get_global = True)
     if geom_infos != None:
       psets = ifcopenshell.util.element.get_psets(current_node)
       node = Node(current_node.Name, current_node.is_a(), current_node.GlobalId, geom_infos, psets)
@@ -199,6 +238,18 @@ class Graph:
   def merge_adjacent(self, guid):
     node = self.node_dict[guid]
     return merge(node)
+  def merge_by_type(self, ifc_type):
+    dict = {}
+    merged = set()
+    guids = [key for key,value in self.node_dict.items() if value.geom_type == ifc_type]
+    for guid in guids:
+      if guid not in merged:
+        results = merge(self.node_dict[guid])
+        for result in results:
+          merged.add(result)
+        if len(results) > 1:
+          dict[guid] = results
+    return dict
   def gjk_query(self,guid1, guid2):
     node1 = self.node_dict[guid1]
     node2 = self.node_dict[guid2]
@@ -233,8 +284,9 @@ class Node:
     self.guid = guid
     self.psets = psets
     self.near = []
-  
   def intersect(node1,node2):
     bbox1 = node1.geom_info["bbox"]
     bbox2 = node2.geom_info["bbox"]
     return collision.intersect(bbox1,bbox2)
+  def get_local_coors(self):
+    return get_local_coors(self.geom_info["T_matrix"], self.geom_info["vertex"])
