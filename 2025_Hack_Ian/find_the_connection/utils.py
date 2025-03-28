@@ -78,7 +78,7 @@ def np_intersect_rows(arr1, arr2):
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
-def merge_test(node, geom_type, geom_info_for_check, atol = 1e-3):
+def merge_test(node, node_n, geom_info_for_check, atol = 1e-3):
   """
     Condition of merging for two nodes (wall)
     1. Same Geometry Type
@@ -94,10 +94,14 @@ def merge_test(node, geom_type, geom_info_for_check, atol = 1e-3):
     2. same thickness
   """
   # if they are not of same type, no need check anything, imeediately return False
-  if geom_type != node.geom_type:
+  geom_type = node.geom_type
+  if geom_type != node_n.geom_type:
     return False
+  # if Psets are different, return False
+  if node.psets != node_n.psets:
+      return False
   # Check geometric properties to compare
-  geom_info_for_check2 = get_geom_info_for_check(node)
+  geom_info_for_check2 = get_geom_info_for_check(node_n)
   if geom_info_for_check2 == False:
     return False
   # Different Geometric check based on type
@@ -160,14 +164,13 @@ def merge(node):
   geom_info_for_check= get_geom_info_for_check(node)
   # Certain geometry are invalid for merging e.g, no 4 points etc
   if geom_info_for_check:
-    _type = node.geom_type
     stack = [node]
     while stack:
       current = stack.pop()
       memory["T"].add(current.guid)
       for node_n in current.near:
         if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
-          if merge_test(node_n, _type, geom_info_for_check, atol = 1e-3):
+          if merge_test(node, node_n, geom_info_for_check, atol = 1e-3):
             stack.append(node_n)
           else: 
             memory["F"].add(node_n.guid)
@@ -177,7 +180,9 @@ def write_to_node(current_node):
   if current_node != None:
     geom_infos = get_geom_info(current_node, get_global = True)
     if geom_infos != None:
-      psets = ifcopenshell.util.element.get_psets(current_node)
+      # ignore id cause they are not relevant
+      psets = {key: {k: v for k, v in subdict.items() if k != "id"}
+    for key, subdict in ifcopenshell.util.element.get_psets(current_node).items()}
       node = Node(current_node.Name, current_node.is_a(), current_node.GlobalId, geom_infos, psets)
       return node
 # ====================================================================

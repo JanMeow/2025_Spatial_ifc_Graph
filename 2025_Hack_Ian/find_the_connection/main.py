@@ -93,7 +93,7 @@ def main():
         nodes = [graph.node_dict[guid] for guid in values]
         bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
         bool_results.append(bool_result)
-        # E.modify_element_to_model(model, new_model, key, vertices=bool_result[0], faces= bool_result[1])
+        # E.modify_element_to_model(model, new_model, graph, key, vertices=bool_result[0], faces= bool_result[1])
   
     # Displaying mesh, points, boolean or vectors
     # ====================================================================

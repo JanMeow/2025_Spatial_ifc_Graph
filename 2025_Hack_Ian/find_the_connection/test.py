@@ -75,23 +75,24 @@ def main():
     new_model = E.copy_project_structure(model)
     result = result_W | result_S | result_R
     bool_results = []
+
     for key, values in result.items():
         nodes = [graph.node_dict[guid] for guid in values]
         bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
         bool_results.append(bool_result)
-        E.modify_element_to_model(model, new_model, key, vertices=bool_result[0], faces= bool_result[1])
+        E.modify_element_to_model(model, new_model, graph, key, vertices=bool_result[0], faces= bool_result[1])
 
     new_model.write("data/ifc/meow1.ifc")
     # Adding other parts that are not booleaned
     # ============================
     booled = [item for sublist in result.values() for item in sublist ]
+
     for key,value in graph.node_dict.items():
         if key not in booled:
-            print(value.psets)
-            # Use the original geometry and rebuild
-            E.modify_element_to_model(model, new_model, key, value.geom_info["vertex"], value.geom_info["face"])
+            if value != "27ROpENnDEQf6IKnuny1QN" or value != "1i6ly1$jf9BB$Trdgge$81":
+                # Use the original geometry and rebuild
+                E.modify_element_to_model(model, new_model, graph, key, value.geom_info["vertex"], value.geom_info["face"])
     new_model.write("data/ifc/meow2.ifc")
-
 
     # Displaying particular boolean/mesh/points in custom viewer
     # ====================================================================

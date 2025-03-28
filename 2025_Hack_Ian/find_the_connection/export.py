@@ -45,34 +45,13 @@ def create_owner_history(model):
             CreationDate=int(time.time())
         )
   return owner_history
-def wrap_ifc_value(model, val):
-  """
-  Convert a Python value (int, float, str) into an IFC4-compliant entity,
-  e.g. IfcInteger, IfcReal, IfcLabel, IfcText, etc.
-  """
-  if isinstance(val, float):
-      # IFC expects a select type like IfcReal
-      return model.create_entity("IfcReal", val)
-  elif isinstance(val, int):
-      # IFC expects IfcInteger
-      return model.create_entity("IfcInteger", val)
-  elif isinstance(val, str):
-      # Could use IfcLabel (short text) or IfcText (long text). 
-      # If not sure, IfcLabel is most common.
-      return model.create_entity("IfcLabel", val)
-  else:
-      # For bool or other types, adapt to your needs.
-      # We can just treat it as text, or skip.
-      return model.create_entity("IfcLabel", str(val))
-def reset_placement_to_origin(model, element):
-    origin = model.create_entity("IfcCartesianPoint", Coordinates=[0.0, 0.0, 0.0])
-    placement_3d = model.create_entity("IfcAxis2Placement3D", Location=origin)
-    local_placement = model.create_entity("IfcLocalPlacement", RelativePlacement=placement_3d)
-    element.ObjectPlacement = local_placement
+# ====================================================================
+#  Copying the original spatial strcutures/ containers into new model
 # ====================================================================
 def copy_spatial_structure(old_model, new_model, old_object):
     # Step A: Copy the current object
-    new_object = copy_entity(new_model, old_object)
+    new_object = copy_entity(new_model, old_object, except_attrs=["id"])
+    extract_properties(old_model, new_model, new_object.GlobalId)
     # Step B: For each 'IfcRelAggregates' in old_object.IsDecomposedBy
     #         we create a new relationship that references all child copies at once
     for old_rel in old_object.IsDecomposedBy:
@@ -83,7 +62,6 @@ def copy_spatial_structure(old_model, new_model, old_object):
             for old_child in old_rel.RelatedObjects:
                 new_child = copy_spatial_structure(old_model, new_model, old_child)
                 new_children.append(new_child)
-            
             # Now create a new relationship in the new model, referencing parent + children
             new_rel = copy_rel(new_model, old_rel, new_object, new_children)
     # Return the new copy of this object to the caller
@@ -92,17 +70,20 @@ def copy_project_structure(old_model):
     new_model = ifcopenshell.file(schema=old_model.schema)
     old_project = old_model.by_type("IfcProject")[0]
     new_project = copy_spatial_structure(old_model, new_model, old_project)
+    old_contexts = old_model.by_type("IfcGeometricRepresentationContext")
+    for ctx in old_contexts:
+        new_model.add(ctx)
     return new_model
-def copy_entity(new_model, current_entity):
-    # Copy shallow spatial structure entities
+def copy_entity(new_model, current_entity, except_attrs=["id"]):
+    # Copy shallow spatial structure entities, by default id is ignored cause its autogenrated
     attrs = current_entity.get_info()
     entity_type = attrs.pop("type") 
-    attrs.pop("id") 
+    attrs = {k: v for k, v in attrs.items() if k not in except_attrs}
     return new_model.create_entity(entity_type, **attrs)
 def copy_rel(new_model, rel, relating, related):
     return new_model.create_entity(
         "IfcRelAggregates",
-        GlobalId=rel.GlobalId,
+        GlobalId=ifcopenshell.guid.new(),
         RelatingObject=relating,
         RelatedObjects=related
     )
@@ -126,7 +107,6 @@ def copy_element_props_subgraph(old_model, new_model, guid):
 def create_project_structure( schema = "IFC4"):
     new_model = ifcopenshell.file(schema = schema)
     spatial_hierachy = ["IfcProject","IfcSite", "IfcBuilding", "IfcBuildingStorey"]
-
     # Create_basic_skeleton
     def create():
         prev = None
@@ -141,7 +121,7 @@ def create_project_structure( schema = "IFC4"):
             prev = new_spatial_layer
         return new_model, prev
     return create()
-def export(guids, model, file_path, save_props=True, take_ref = False):
+def partial_export(guids, model, file_path, save_props=True, take_ref = False):
     # Step 1: Create new basic IFC project
     if take_ref:
         new_model, storey = create_project_structure(ref=model)
@@ -207,7 +187,150 @@ def create_shape(new_model, entity,vertices, faces):
     entity.Representation = prod_def_shape
     return 
 # ====================================================================
-# Extracting properties from old model to new model
+# Creating and Assign properties from old model to new model
+# ====================================================================
+def create_psets_from_node(node, new_model):
+    """
+    Given a 'node' whose 'node.psets' is a dictionary of the form:
+        {
+          "Pset_WallCommon": { "Reference": "Basic Wall", "IsExternal": True },
+          "BaseQuantities": { "Length": 3000, "Height": 2800 }
+        }
+    ...create corresponding property definition entities (IfcPropertySet or IfcElementQuantity)
+    in 'new_model'. Return a list of newly created entities.
+    """
+    pset_entities = []
+    if node.psets == None:
+        return pset_entities  # no psets to create
+
+    # For each Pset name -> subdict of properties
+    for pset_name, props_dict in node.psets.items():
+        # If we detect "BaseQuantities" (or any other name you want),
+        # we create an IfcElementQuantity; otherwise we create an IfcPropertySet.
+        if pset_name == "BaseQuantities":
+            eq = _create_ifc_element_quantity(new_model, pset_name, props_dict)
+            if eq:
+                pset_entities.append(eq)
+        else:
+            pset_entity = _create_ifc_property_set(new_model, pset_name, props_dict)
+            if pset_entity:
+                pset_entities.append(pset_entity)
+    return pset_entities
+def assign_psets_to_entity(new_model, new_entity, psets_list):
+    """
+    Given a list of IfcPropertyDefinition entities (IfcPropertySet or IfcElementQuantity),
+    attach each to 'new_entity' via a new IfcRelDefinesByProperties relationship.
+    """
+    for prop_def in psets_list:
+        new_model.create_entity(
+            "IfcRelDefinesByProperties",
+            GlobalId=ifcopenshell.guid.new(),
+            RelatedObjects=[new_entity],
+            RelatingPropertyDefinition=prop_def
+        )
+def _create_ifc_property_set(new_model, pset_name, props_dict):
+    """
+    Create an IfcPropertySet with IfcPropertySingleValue properties from 'props_dict'.
+    """
+    # Build a list of IfcPropertySingleValue
+    property_list = []
+    for key, val in props_dict.items():
+        # If there's a key you want to skip, like "id", you can do:
+        if key == "id":
+            continue
+
+        value_entity = to_ifc_value(new_model, val)
+        prop_sv = new_model.create_entity(
+            "IfcPropertySingleValue",
+            Name=key,
+            NominalValue=value_entity,
+            Unit=None
+        )
+        property_list.append(prop_sv)
+    # Create the IfcPropertySet itself
+    if not property_list:
+        return None  # no properties to attach
+    pset_entity = new_model.create_entity(
+        "IfcPropertySet",
+        GlobalId=ifcopenshell.guid.new(),
+        Name=pset_name,
+        Description=None,
+        HasProperties=property_list
+    )
+    return pset_entity
+def _create_ifc_element_quantity(new_model, qset_name, quantity_dict):
+    """
+    Create an IfcElementQuantity with IfcQuantityLength / IfcQuantityArea / etc.
+    This is a simple heuristic that checks key names for "Length", "Area", or "Volume".
+    """
+    quantity_list = []
+    for key, val in quantity_dict.items():
+        # skip "id" if present
+        if key == "id":
+            continue
+
+        # Convert numeric value
+        num_val = float(val) if val is not None else 0.0
+
+        if "Length" in key:
+            qty = new_model.create_entity(
+                "IfcQuantityLength",
+                Name=key,
+                Description=None,
+                Unit=None,
+                LengthValue=num_val
+            )
+        elif "Area" in key:
+            qty = new_model.create_entity(
+                "IfcQuantityArea",
+                Name=key,
+                Description=None,
+                Unit=None,
+                AreaValue=num_val
+            )
+        elif "Volume" in key:
+            qty = new_model.create_entity(
+                "IfcQuantityVolume",
+                Name=key,
+                Description=None,
+                Unit=None,
+                VolumeValue=num_val
+            )
+        else:
+            # fallback or skip
+            # you can create IfcQuantityLength by default, or skip
+            continue
+
+        quantity_list.append(qty)
+
+    if not quantity_list:
+        return None
+
+    eq = new_model.create_entity(
+        "IfcElementQuantity",
+        GlobalId=ifcopenshell.guid.new(),
+        Name=qset_name,
+        MethodOfMeasurement=None,
+        Quantities=quantity_list
+    )
+    return eq
+def to_ifc_value(new_model, py_val):
+    if isinstance(py_val, bool):
+        ifc_type = "IfcBoolean"
+    elif isinstance(py_val, int):
+        ifc_type = "IfcInteger"
+    elif isinstance(py_val, float):
+        ifc_type = "IfcReal"
+    elif isinstance(py_val, str):
+        ifc_type = "IfcLabel"
+    else:
+        # Fallback: treat everything else as string
+        ifc_type = "IfcLabel"
+    return new_model.create_entity(ifc_type, py_val)
+
+# ====================================================================
+# Extracting properties from old model to new model might crash as some
+# internal referneces might no be copied.
 # ====================================================================
 def extract_properties(old_model, new_model, guid):
     old_entity = old_model.by_guid(guid)
@@ -222,7 +345,7 @@ def extract_properties(old_model, new_model, guid):
             # Create a brand-new relationship in new_model
             new_model.create_entity(
                 "IfcRelDefinesByProperties",
-                GlobalId=rel.GlobalId,
+                GlobalId=ifcopenshell.guid.new(),
                 RelatedObjects=[new_entity],
                 RelatingPropertyDefinition=new_pset)
     return
@@ -315,19 +438,22 @@ def assign_to_container(old_model, new_model, guid):
     new_entity = new_model.by_guid(guid)
     if new_container:
         new_model.create_entity("IfcRelContainedInSpatialStructure", 
-                                GlobalId=old_rel.GlobalId, 
+                                GlobalId=ifcopenshell.guid.new(), 
                                 RelatingStructure=new_container, 
                                 RelatedElements=[new_entity])
     else:
         print(f"Warning: Could not find container for element {guid}.")
         return 
-def modify_element_to_model(old_model, new_model, guid, vertices=None, faces=None):
+def modify_element_to_model(old_model, new_model, graph, guid, vertices=None, faces=None):
+    node = graph.node_dict[guid]
     old_entity = old_model.by_guid(guid)
-    new_entity =  copy_entity(new_model, old_entity)
-    # # === Copy properties from the old element: still working on it
-    # extract_properties(old_model, new_model, guid)
+    new_entity =  copy_entity(new_model, old_entity, except_attrs=["id", "ObjectPlacement", "Representation"])
     # === Create shape representation for the element
     create_shape(new_model, new_entity,vertices, faces)
+    # # === Create and assign properties from the old element: 
+    extract_properties(old_model, new_model, guid)
+    # pset_defs = create_psets_from_node(node, new_model)
+    # assign_psets_to_entity(new_model, new_entity, pset_defs)
     # === Attach new element to same spatial container
     assign_to_container(old_model, new_model, guid)
     print(f"✅ Created new ifc entity for element {guid} with {len(vertices)} vertices and {len(faces)} faces.")
