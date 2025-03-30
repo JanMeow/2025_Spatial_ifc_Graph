@@ -1,6 +1,8 @@
 🚀 2025 Hackathon – "Find the Connection"
 
 Hey there!!!!!!! Welcome !! 
+This the winning project for the 2025 Hackethin from OpenSourceConstruction in Zürich !
+
 This repository contains two major components:
 
 Find the Connection – Graph-based IFC processing & collision detection
