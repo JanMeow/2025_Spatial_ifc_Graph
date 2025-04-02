@@ -1,7 +1,8 @@
 import numpy as np
 import trimesh
+import trimesh.smoothing
 """
-This module contains the boolean operations that are used for merging collision shapes
+This module contains the boolean opserations that are used for merging collision shapes
 or touching shapes
 # Task 
 # Install conda, meshplot,libigl,PolyFem, 
@@ -22,10 +23,12 @@ Task for the week:
 # ====================================================================
 # Helpers Functons
 # ====================================================================
-def is_xyz_extrusion(vertex):
-  if len(np.unique(vertex[:,2])) == 2:
+def align_to_axis(vertex, axis =2):
+  if len(np.unique(vertex[:,axis])) == 2:
     return True
   return False
+def get_centre_point(bbox):
+  return (bbox[0] + bbox[1]) / 2
 def is_xzy_box(vertex):
   for i in range(3):
     if len(np.unique(vertex[:,i])) != 2:
@@ -65,6 +68,17 @@ def get_local_coors(T_matrix, vertex):
     ones = np.ones(shape = (vertex.shape[0],1))
     result = np.around(np.hstack((vertex, ones)) @ inverse, 2)
     return result[:,0:-1]
+def np_intersect_rows(arr1, arr2):
+  set0 = set(map(tuple, arr1))
+  set1 = set(map(tuple, arr2))
+  shared = set0.intersection(set1)
+  return np.array(list(shared))
+def np_intersect_rows_atol(arr1,arr2, atol = 0.01):
+  diffs = np.linalg.norm(arr1[:, None, :] - arr2[None, :, :], axis=2)
+  matches = diffs < atol
+  # arr1 row i matches arr2 row j
+  i,j = np.where(matches)
+  return i,j
 # ====================================================================
 # Display Functions
 # ==============================================================  ======
@@ -79,7 +93,7 @@ def colour_palette():
 # ====================================================================
 # 3D Boolean Operations face
 # ====================================================================
-def boolean_3D(nodes, operation="union", return_type = "trimesh"):
+def boolean_3D(nodes, operation="union", return_type = "trimesh", engine = "manifold", atol = 0.01):
     """
     Perform a boolean operation (union, intersection, difference) on multiple 3D meshes.
 
@@ -91,6 +105,9 @@ def boolean_3D(nodes, operation="union", return_type = "trimesh"):
     - vertices (np.ndarray): Array of resulting mesh vertices (float32).
     - faces (np.ndarray): Array of resulting mesh faces (uint32).
     """
+    # Preprocess the nodes to elimate gap due to floating point error
+    preprocessing(nodes, atol = atol)
+
     if len(nodes) < 2:
         raise ValueError("At least two meshes are required for a boolean operation.")
 
@@ -102,18 +119,39 @@ def boolean_3D(nodes, operation="union", return_type = "trimesh"):
     ]
 
     if operation == "union":
-        result = trimesh.boolean.union(meshes)
+        result = trimesh.boolean.union(meshes, engine = engine)
     elif operation == "intersection":
-        result = trimesh.boolean.intersection(meshes)
+        result = trimesh.boolean.intersection(meshes, engine = engine)
     elif operation == "difference":
-        result = trimesh.boolean.difference(meshes)
+        result = trimesh.boolean.difference(meshes, engine = engine)
     else:
         raise ValueError(f"Invalid operation type: {operation}")
-
+    result = clean_mesh(result)
     if return_type == "trimesh":
         return result
     elif return_type == "vf_list":
       return np.array(result.vertices, dtype=np.float32), np.array(result.faces, dtype=np.uint32)
+def preprocessing(nodes, atol = 0.01):
+    for i in range(len(nodes[1:])):
+      prev = nodes[i-1]
+      current = nodes[i]
+      m0 = prev.geom_info["vertex"]
+      m1 = current.geom_info["vertex"]
+      i,j = np_intersect_rows_atol(m0, m1, atol=atol)
+      if len(i) > 0:
+        #  set the vertex to be the same
+        for m0_idx, m1_idx in zip(i, j):
+          current.geom_info["vertex"][m1_idx] = prev.geom_info["vertex"][m0_idx]
+    return True
+def clean_mesh(mesh):
+   mesh.remove_duplicate_faces()
+   mesh.merge_vertices()
+   mesh.merge_vertices()
+
+   mesh.fix_normals()
+   return mesh
+
+
 # ====================================================================
 # 2D Boolean Operations
 # ====================================================================

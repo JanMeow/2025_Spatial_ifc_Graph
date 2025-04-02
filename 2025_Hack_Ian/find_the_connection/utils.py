@@ -1,11 +1,12 @@
 import numpy as np
+import trimesh
 import ifcopenshell
 import ifcopenshell.geom
 import ifcopenshell.util.shape
 import collision
 import math
 from traversal import bfs_traverse, loop_detecton
-from geometry_processing import decompose_2D_from_base, angle_between, get_base_curve, get_local_coors
+from geometry_processing import decompose_2D_from_base, angle_between, get_base_curve, get_local_coors, np_intersect_rows
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -13,7 +14,7 @@ def get_bbox(arr):
   max = np.max(arr, axis = 0)
   min = np.min(arr, axis = 0)
   return np.vstack((min,max))
-def get_geom_info(entity, get_global = False):
+def get_geom_info(entity, get_global = False, round_to = 8):
   if hasattr(entity, "Representation"):
     if entity.Representation != None:
       result = {
@@ -26,7 +27,7 @@ def get_geom_info(entity, get_global = False):
         settings = ifcopenshell.geom.settings()
         shape = ifcopenshell.geom.create_shape(settings, entity)
         result["T_matrix"] = ifcopenshell.util.shape.get_shape_matrix(shape)
-        result["vertex"]  = np.around(ifcopenshell.util.shape.get_vertices(shape.geometry),2)
+        result["vertex"]  = np.around(ifcopenshell.util.shape.get_vertices(shape.geometry), round_to)
         result["face"] = ifcopenshell.util.shape.get_faces(shape.geometry)
 
         if get_global:
@@ -35,7 +36,7 @@ def get_geom_info(entity, get_global = False):
           ones = np.ones(shape = (vertex.shape[0],1))
           stacked = np.hstack((vertex, ones))
           global_coor = stacked@ T_matrix.T
-          global_coor = np.around(global_coor[:,0:-1],2)
+          global_coor = np.around(global_coor[:,0:-1],round_to)
           result["vertex"] = global_coor
 
         result["bbox"] = get_bbox(result["vertex"])
@@ -43,38 +44,32 @@ def get_geom_info(entity, get_global = False):
       except:
         return None
 def get_triangulated_equation(A, B, C):
-    # Compute vectors V1 and V2
-    V1 = B - A
-    V2 = C - A
-    # Compute the normal vector (A, B, C) using cross product
-    normal = np.cross(V1, V2)
-    A, B, C = normal
-    # Compute D using the plane equation
-    D = -np.dot(normal, A)  # Substituting A into Ax + By + Cz + D = 0
-    # Print(equation)
-    print(f"Plane equation: {A}x + {B}y + {C}z + {D} = 0")
-    return A, B, C, D
+  # Compute vectors V1 and V2
+  V1 = B - A
+  V2 = C - A
+  # Compute the normal vector (A, B, C) using cross product
+  normal = np.cross(V1, V2)
+  A, B, C = normal
+  # Compute D using the plane equation
+  D = -np.dot(normal, A)  # Substituting A into Ax + By + Cz + D = 0
+  # Print(equation)
+  print(f"Plane equation: {A}x + {B}y + {C}z + {D} = 0")
+  return A, B, C, D
 def get_triangulated_planes(node):
-    if node.geom_info == None:
-      print("Node has no geometry")
-      return None
-    geom_info =  node.geom_info
-    vertex = geom_info["vertex"]
-    vertex_indices = geom_info["face"]
+  if node.geom_info == None:
+    print("Node has no geometry")
+    return None
+  geom_info =  node.geom_info
+  vertex = geom_info["vertex"]
+  vertex_indices = geom_info["face"]
 
-    arr_shape = (vertex_indices.shape[0], vertex_indices.shape[1], vertex.shape[1])
-    array = np.zeros(arr_shape, dtype = np.float32)
-    for i,index in enumerate(vertex_indices):
-        A, B, C = vertex[index[0]], vertex[index[1]], vertex[index[2]]
-        v_stack = np.vstack((A,B,C))
-        array[i] = v_stack
-    return array
-def np_intersect_rows(arr1, arr2):
-        set1 = set(map(tuple, arr1))
-        set2 = set(map(tuple, arr2))
-        shared = set1.intersection(set2)
-        return np.array(list(shared))
-
+  arr_shape = (vertex_indices.shape[0], vertex_indices.shape[1], vertex.shape[1])
+  array = np.zeros(arr_shape, dtype = np.float32)
+  for i,index in enumerate(vertex_indices):
+      A, B, C = vertex[index[0]], vertex[index[1]], vertex[index[2]]
+      v_stack = np.vstack((A,B,C))
+      array[i] = v_stack
+  return array
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
@@ -86,7 +81,7 @@ def merge_test(node, node_n, geom_info_for_check, atol = 1e-3):
     3. Same height a
     4. Same width base curve
     6. Same direction of traversal 
-    6. Same Psets #not done yet
+    6. Same Psets #not confirmed the format yet
 
     roof:
     #need OBB
@@ -97,9 +92,15 @@ def merge_test(node, node_n, geom_info_for_check, atol = 1e-3):
   geom_type = node.geom_type
   if geom_type != node_n.geom_type:
     return False
-  # if Psets are different, return False
-  if node.psets != node_n.psets:
-      return False
+  # if Psets are different, return False, except base quantities
+  # if "BaseQuantities" in node.psets or "BaseQuantities"  in node_n.psets:
+  #   p1 = {k: v for k,v in node.psets.items() if k != "BaseQuantities"}
+  #   p2 = {k: v for k,v in node_n.psets.items() if k != "BaseQuantities"}
+  #   if p1 != p2:
+  #       return False
+  # else:
+  #   if node.psets != node_n.psets:
+  #     return False
   # Check geometric properties to compare
   geom_info_for_check2 = get_geom_info_for_check(node_n)
   if geom_info_for_check2 == False:
@@ -276,10 +277,11 @@ class Graph:
   @classmethod
   def create(cls, root):
     cls = cls(root.GlobalId)
-    for node in bfs_traverse(root, True,write_to_node):
+    for node in bfs_traverse(root, list_contained_elements = True,func = write_to_node):
       if node!= None:
         cls.node_dict[node.guid] = node
     cls.get_bbox()
+    print("Graph created")
     return cls
 class Node:
   def __init__(self, name, _type, guid, geom_info, psets) :

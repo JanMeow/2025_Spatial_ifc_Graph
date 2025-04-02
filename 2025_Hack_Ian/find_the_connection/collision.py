@@ -109,8 +109,8 @@ def check_pca_similarity(node1_p_axes, node2_p_axes, atol = 0.1, method = "Hunga
         similarity[similarity <1e-2] = 0
         identity_check = np.allclose(similarity, np.eye(M.shape[0]), atol= atol)
         return identity_check
-def oobb_pca(vertices):
-    pca = PCA(n_components=3)
+def oobb_pca(vertices, n_components=3):
+    pca = PCA(n_components=n_components)
     pca.fit(vertices)
     # Principal axes (columns are the basis vectors)
     principal_axes = pca.components_
@@ -135,7 +135,7 @@ def oobb_pca(vertices):
     return box_corners_world, principal_axes, np.vstack((min_bounds, max_bounds))
 def ooBB_convex_hull(faces,vertices):
     return
-def create_OOBB(node, method):
+def create_OOBB(node, method, n_components=3):
     vertices = node.geom_info["vertex"]
     fv_index = node.geom_info["face"]
     faces = vertices[fv_index]

@@ -1,7 +1,7 @@
 import ifcopenshell
 import numpy as np
 from pathlib import Path
-from utils import  Graph, get_geom_info
+from utils import  Graph, get_geom_info, get_geom_info_for_check
 from traversal import get_adjacent
 from geometry_processing import angle_between, boolean_3D
 import trimesh
@@ -76,6 +76,7 @@ def main():
     result = result_W | result_S | result_R
     bool_results = []
 
+
     for key, values in result.items():
         nodes = [graph.node_dict[guid] for guid in values]
         bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
@@ -89,10 +90,10 @@ def main():
 
     for key,value in graph.node_dict.items():
         if key not in booled:
-            if value != "27ROpENnDEQf6IKnuny1QN" or value != "1i6ly1$jf9BB$Trdgge$81":
-                # Use the original geometry and rebuild
-                E.modify_element_to_model(model, new_model, graph, key, value.geom_info["vertex"], value.geom_info["face"])
+            # Use the original geometry and rebuild
+            E.modify_element_to_model(model, new_model, graph, key, value.geom_info["vertex"], value.geom_info["face"])
     new_model.write("data/ifc/meow2.ifc")
+
 
     # Displaying particular boolean/mesh/points in custom viewer
     # ====================================================================
