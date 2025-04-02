@@ -7,6 +7,13 @@ import collision
 import math
 from traversal import bfs_traverse, loop_detecton
 from geometry_processing import decompose_2D_from_base, angle_between, get_base_curve, get_local_coors, np_intersect_rows
+# ===================================================================================
+# Global Variables for units and tolerance
+# ===================================================================================
+round_to = 2
+atol = 1e-3
+# ===================================================================================
+# ===================================================================================
 # ====================================================================
 # Geometry Processing
 # ====================================================================
@@ -14,7 +21,7 @@ def get_bbox(arr):
   max = np.max(arr, axis = 0)
   min = np.min(arr, axis = 0)
   return np.vstack((min,max))
-def get_geom_info(entity, get_global = False, round_to = 8):
+def get_geom_info(entity, get_global = False, round_to = round_to):
   if hasattr(entity, "Representation"):
     if entity.Representation != None:
       result = {
@@ -73,7 +80,7 @@ def get_triangulated_planes(node):
 # ====================================================================
 # Graph Helper Functions
 # ====================================================================
-def merge_test(node, node_n, geom_info_for_check, atol = 1e-3):
+def merge_test(node, node_n, geom_info_for_check, atol = atol):
   """
     Condition of merging for two nodes (wall)
     1. Same Geometry Type
@@ -171,7 +178,7 @@ def merge(node):
       memory["T"].add(current.guid)
       for node_n in current.near:
         if node_n.guid not in memory["T"] and node_n.guid not in memory["F"]:
-          if merge_test(node, node_n, geom_info_for_check, atol = 1e-3):
+          if merge_test(node, node_n, geom_info_for_check, atol = atol):
             stack.append(node_n)
           else: 
             memory["F"].add(node_n.guid)
@@ -196,7 +203,6 @@ class Graph:
     self.bbox = None
     self.longest_axis = None
     self.bvh = None
-
   def __len__(self):
         return len(self.node_dict)
   def get_bbox(self):

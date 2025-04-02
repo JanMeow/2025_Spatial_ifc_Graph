@@ -9,13 +9,18 @@ import display
 import export as E
 import geometry_processing as GP
 import compute_proxy as CP
-
-# ====================================================================
+# ===================================================================================
+# Global Variables for import and export file paths
+# ===================================================================================
 ifc_folder = Path("data")/"ifc"
 ifc_folder.mkdir(parents=True, exist_ok=True)
 ifc_path = ifc_folder/"test1.ifc"
 export_path = "data/ifc/new_model.ifc"
-
+# ===================================================================================
+# ===================================================================================
+# ====================================================================
+# Main function to run the script
+# ====================================================================
 def main():
     # Read the IFC file:
     # ====================================================================
@@ -92,28 +97,28 @@ def main():
     plain_model, storey = E.create_project_structure()
     result = result_W | result_S | result_R
     bool_results = []
-    for key, values in result.items():
-        nodes = [graph.node_dict[guid] for guid in values]
-        bool_result = GP.boolean_3D(nodes, operation="union", return_type = "vf_list")
-        bool_results.append(bool_result)
-        E.create_element_in_model(plain_model, graph, key, vertices=bool_result[0], faces= bool_result[1], shape = "PolygonalFaceSet")
-    plain_model.write("data/ifc/p_meow1.ifc")
+    # for key, values in result.items():
+    #     nodes = [graph.node_dict[guid] for guid in values]
+    #     bool_result = GP.boolean_3D(nodes, operation="union", return_type = "vf_list")
+    #     bool_results.append(bool_result)
+    #     E.create_element_in_model(plain_model, graph, key, vertices=bool_result[0], faces= bool_result[1], shape = "PolygonalFaceSet")
+    # plain_model.write("data/ifc/p_meow1.ifc")
 
-    # Adding other parts that are not booleaned
-    # ============================
-    booled = [item for sublist in result.values() for item in sublist ]
+    # # Adding other parts that are not booleaned
+    # # ============================
+    # booled = [item for sublist in result.values() for item in sublist ]
 
-    for key,value in graph.node_dict.items():
-        if key not in booled:
-            E.create_element_in_model( plain_model, graph, key, value.geom_info["vertex"], value.geom_info["face"], shape = "PolygonalFaceSet")
-    plain_model.write("data/ifc/P_meow2.ifc")
+    # for key,value in graph.node_dict.items():
+    #     if key not in booled:
+    #         E.create_element_in_model( plain_model, graph, key, value.geom_info["vertex"], value.geom_info["face"], shape = "PolygonalFaceSet")
+    # plain_model.write("data/ifc/P_meow2.ifc")
    
 
 
     # Computing Proxy
     # ====================================================================
-    test_node0 = "0DPk3As8fAPwVPbv4Ds3ps"
-    CP.get_features_for_compute(node)
+    test_node0 = graph.node_dict["0DPk3As8fAPwVPbv4Ds3ps" ]
+    CP.get_features_for_compute(test_node0)
 
 
     # ====================================================================
@@ -159,15 +164,6 @@ def main():
     #     E.modify_element_to_model(model, new_model, graph, key, vertices=bool_result[0], faces= bool_result[1])
     # new_model.write("data/ifc/meow1.ifc")
 
-
-    def spatial_child(model):
-        ifcproject = model.by_type("IfcProject")[0]
-        def decompose(current):
-            if hasattr(current, "IsDecomposedBy") and len(current.IsDecomposedBy) != 0:
-                for rel in current.IsDecomposedBy:
-                    if rel.is_a("IfcRelAggregates"):
-                        for child in rel.RelatedObjects:
-                            print(child)
 
 
 

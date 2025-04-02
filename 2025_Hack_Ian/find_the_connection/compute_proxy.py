@@ -1,5 +1,6 @@
 
 import numpy as np
+import ifcopenshell
 import geometry_processing as GP
 import collision as C
 from scipy.optimize import linear_sum_assignment
@@ -39,56 +40,101 @@ from scipy.optimize import linear_sum_assignment
     3. Likelihood. for example, when we model, we model often multiple walls touching each other, and slabs, so we need to calculate also the 
         their tendecy of clustering.
     4.Proportion of the base curve => determining if its horiozontal or vertical or slanted element => determind_oobb_proportion(node)
-
-    feature = {
-    upper,
-    lower,
-    left,
-    right,
-    OOBB_X_Extent,
-    OOBB_Y_Extent,
-    OOBB_Z_Extent,
-    align_to_z_axis: 0 or 1,
-    number of vetices in the base,
-    area of the base,
-    is_tilted: 0 or 1
-
-    }
     """
+# ===================================================================================
+# Global Variables for import and export file paths
+# ===================================================================================
+features= {
+    "upper": "ifctype",
+    "lower": "ifctype",
+    "left": "ifctype",
+    "right": "ifctype",
+    "AABB_X_Extent": float,
+    "OOBB_X_Extent": float,
+    "AABB_Y_Extent": float,
+    "OOBB_Y_Extent": float,
+    "AABB_Z_Extent": float,
+    "OOBB_Z_Extent": float,
+    "AABB_base_area": float,
+    "OOBB_Base_area": float,
+    "z_axis_aligned": bool,
+    "number_of_vertices_in_base": int,
+    "number_of_neighbours_of_same_type": int,
+    "relative_position_to_building": float,
+    "relative_position_to_floor": float,
+}
+
+round_to = 2
+# ===================================================================================
+# ===================================================================================
+# ====================================================================
+# Compute the features for the element
+# ====================================================================
 def get_features_for_compute(node):
-    principal_axes, min_max_bounds = get_oobb(node)
-    upper,lower,left,right = assign_neighbours(node, principal_axes)
-    print("Upper: ", upper.guid, "Lower: ", lower.guid, "Left: ", left.guid, "Right: ", right.guid)
+    # PCA
+    principal_axes, min_max_extents= get_oobb(node)
+    node.principal_axes = principal_axes
+    # Get Neighbours
+    upper,lower,left,right = assign_neighbours(node)
+    # Test if the element is z aligned (roof are often not z aligned)
+    z_axis_aligned = is_z_axis_aligned(node, atol = 1e-2)
+    # Get the base vertex number and area
+    number_of_vertices_in_base, AABB_base_area = get_base_info(node)
+    OOBB_base_area = np.around(min_max_extents[0] * min_max_extents[1], round_to)
+    # Get number of neighbours of same type
+    number_of_neighbours_of_same_type = len([n for n in node.near if n.ifctype == node.ifctype])
+
+    print(number_of_vertices_in_base, AABB_base_area,OOBB_base_area)
+    # Test Prints
+    print("Upper: ", upper.geom_type, "Lower: ", lower.geom_type, "Left: ", left.geom_type, "Right: ", right.geom_type)
     return
 
 def get_oobb(node):
     vertex = node.geom_info["vertex"]
     _, principal_axes, min_max_bounds = C.oobb_pca(vertex, n_components=3)
     # Rearange the axis to best match world X,Y,Z axis 
-    similarity = np.abs(principal_axes @ np.eye(3).T)
+    similarity = np.abs(principal_axes)
     row_ind, col_ind = linear_sum_assignment(-similarity)
-    return similarity[row_ind], min_max_bounds
+    min_max_bounds = min_max_bounds[:,col_ind]
+    return similarity[col_ind], min_max_bounds[1] - min_max_bounds[0]
 
-def assign_neighbours(node, principal_axes):
+def assign_neighbours(node):
     """
     1. Get the upper, lower, left, right neighbours of an element based on comparing centre point
+    2. Compare the neighbours to yourself if you are upper, lower, 
+        techeotically you can not be lefter or righter than your  neighbours return None
     """
     O = GP.get_centre_point(node.geom_info["bbox"])
-    cps = np.array([GP.get_centre_point(node.geom_info["bbox"]) for node in node.near])
-    bbox_arrays = np.array([node.geom_info["bbox"] for node in node.near])
+    principal_axes = node.principal_axes
+    neighbours = node.near + [node]
+    cps = np.array([GP.get_centre_point(node.geom_info["bbox"]) for node in neighbours])
+    bbox_arrays = np.array([node.geom_info["bbox"] for node in neighbours])
     # Get the upper, lower,by measuring the AABB corners
-    upper = node.near[np.argmax(bbox_arrays[:, 1, 2])]
-    lower = node.near[np.argmin(bbox_arrays[:, 0, 2])]
+    upper = neighbours[np.argmax(bbox_arrays[:, 1, 2])]
+    lower = neighbours[np.argmin(bbox_arrays[:, 0, 2])]
     # Get the left, right neighbours, in fact, left or right doesnt matter but tne most left and right does so we assign one of them
     scalars = np.linalg.norm(principal_axes, axis=1)
     horizontal_direction = principal_axes[np.argmax(scalars)]
     projection = (cps - O) @ horizontal_direction.T
-    left = node.near[np.argmin(projection)]
-    right = node.near[np.argmax(projection)]
-    return upper,lower,left,right
+    left = neighbours[np.argmin(projection)]
+    right = neighbours[np.argmax(projection)]
+    # Compare the neighbours to yourself 
+    results = [n if n != node else None for n in [upper, lower, left, right]]
+    return results
+def get_base_info(node):
+    vertex = node.geom_info["vertex"]
+    face = node.geom_info["face"]
+    lowest_z = node.geom_info["bbox"][0][2]
+    base_v_idx =np.where(vertex[:,2] == lowest_z)
+    base_f_idx = face[np.all(np.isin(face,base_v_idx), axis =1) == True]
+    base_f = vertex[base_f_idx]
+    number_of_vertices_in_base = len(base_v_idx[0])
+    AABB_base_area = 0
+    if number_of_vertices_in_base >=3:
+        for f in base_f:
+            AABB_base_area += GP.get_polygon_area(f)
+    return number_of_vertices_in_base, np.round(AABB_base_area, decimals= round_to)
 
-def assign_proxy_type(node):
-    return
 def compute_relative_position(node):
     """
     1. Compute the relative positon of an element to its neighbour
@@ -96,20 +142,10 @@ def compute_relative_position(node):
     3. Compute the relative position of an element to others on the same floor
     """
     return
-def compute_absolute_position(graph, node):
-    """
-    Computes the absolute position of an element to all oter elements
-    """
-    bbox_G = graph.bvh.bounding_box
-    bbox_N = node.geom_info["bbox"]
-    return
-def is_tilted(node):
+def is_z_axis_aligned(node, atol = 1e-2):
     """
     Computes if the element is tilted or not
     """
-    vertex = node.geom_info["vertex"]
-    if not GP.align_to_axis(vertex, axis=2):
-        # calculate the angle between the normal of the face and the z axis
-
-        return 
-    return 0
+    if np.isclose(node.principal_axes[2][2],1, atol=atol):
+        return True
+    return False

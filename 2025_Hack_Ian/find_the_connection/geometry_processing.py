@@ -79,6 +79,12 @@ def np_intersect_rows_atol(arr1,arr2, atol = 0.01):
   # arr1 row i matches arr2 row j
   i,j = np.where(matches)
   return i,j
+def get_polygon_area(arr):
+  x = arr[:,0]
+  y = arr[:,1]
+  print(arr)
+
+  return 0.5 * np.abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
 # ====================================================================
 # Display Functions
 # ==============================================================  ======

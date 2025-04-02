@@ -106,7 +106,7 @@ def check_pca_similarity(node1_p_axes, node2_p_axes, atol = 0.1, method = "Hunga
         return np.allclose(similarity[row_ind, col_ind], 1.0, atol=atol)
     if method == "Gaussian":
         _, similarity = lu(similarity, permute_l=True)
-        similarity[similarity <1e-2] = 0
+        similarity[similarity <atol] = 0
         identity_check = np.allclose(similarity, np.eye(M.shape[0]), atol= atol)
         return identity_check
 def oobb_pca(vertices, n_components=3):
