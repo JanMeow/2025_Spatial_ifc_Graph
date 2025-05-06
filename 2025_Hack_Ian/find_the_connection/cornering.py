@@ -49,24 +49,17 @@ def scale_wall_to(node0, node1):
     # Get the base curve of the wall
     base_curve_0 = GP.get_base_curve(node0)
     base_curve_1 = GP.get_base_curve(node1)
-    vec_0 = np.array([base_curve_0[1] - base_curve_0[0], base_curve_0[2] - base_curve_0[0]])
-    vec_1 = np.array([base_curve_1[1] - base_curve_1[0], base_curve_1[2] - base_curve_1[0]])
-    scalars_0 = np.linalg.norm(vec_0, axis=1)
-    scalars_1 = np.linalg.norm(vec_1, axis=1)
-    sort_indices_0 = np.argsort(scalars_0, axis = 1)
-    sort_indices_1 = np.argsort(scalars_1, axis = 1)
-    #Sort the vectors and scalars
-    vec_0 = vec_0[sort_indices_0]
-    vec_1 = vec_1[sort_indices_1]
-    scalars_0 = scalars_0[sort_indices_0]
-    scalars_1 = scalars_1[sort_indices_1]
+    vec_0 = GP.decompose_2D_from_base(base_curve_0)
+    vec_1 = GP.decompose_2D_from_base(base_curve_1)
+    scalars_0 = np.linalg.norm(vec_0, axis = 1)
+    scalars_1 = np.linalg.norm(vec_1, axis = 1)
     # Scale up the dominat wall to include the width of the other wall
-    scale_vec_0 = vec_0[1]/scalars_0[1]
-    S0 = np.eye(3) + ((scalars_0[1] + scalars_1[0])/scalars_0[1] - 1) * np.outer(scale_vec_0, scale_vec_0)
+    unit_vec_0 = vec_0[1]/scalars_0[1]
+    S0 = np.eye(3) + ((scalars_0[1] + scalars_1[0])/scalars_0[1] - 1) * np.outer(unit_vec_0, unit_vec_0)
     V0_scaled = node0.geom_info["vertex"] @ S0.T
     # Scale down the other wall to remove the width of the dominant wall
-    scale_vec_1 = vec_1[1]/scalars_1[1]
-    S1 = np.eye(3) + ((scalars_0[1] + scalars_1[0])/scalars_1[1]) * np.outer(scale_vec_1, scale_vec_1)
+    unit_vec_1 = vec_1[1]/scalars_1[1]
+    S1 = np.eye(3) + ((scalars_0[1] + scalars_1[0])/scalars_1[1]) * np.outer(unit_vec_1, unit_vec_1)
     V1_scaled = node1.geom_info["vertex"] @ S1.T
 
     return V0_scaled, V1_scaled

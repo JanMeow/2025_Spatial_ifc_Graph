@@ -8,7 +8,6 @@ import collision
 import display
 import export as E
 import geometry_processing as GP
-import compute_proxy as CP
 import cornering as C
 # ===================================================================================
 # Global Variables for import and export file paths
@@ -177,7 +176,16 @@ def main():
     #Cornering
     # ====================================================================
     corners = C.find_wall_corners(graph)
-    print(corners)
+    for i, (A,B) in enumerate(zip(corners["A"], corners["B"])):
+        if i >1:
+            break
+        nodeA = graph[A]
+        nodeB = graph[B]
+        print("Before")
+        print(nodeA.geom_info["vertex"])
+        A_scaled, B_scaled = C.scale_wall_to(nodeA, nodeB)
+        print("After")
+        print(A_scaled)
     # Exporting the model after rewriting the geometry to ifc
     # ====================================================================
     # export = []
