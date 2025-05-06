@@ -36,7 +36,7 @@ def main():
     # ====================================================================
     for node in graph.node_dict.values():
         if node.geom_info != None:
-            node.near = [graph.node_dict[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
+            node.near = [graph[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
                          if guid != node.guid]
 
     # Show the direct connection
@@ -83,7 +83,7 @@ def main():
 
 
     for key, values in result.items():
-        nodes = [graph.node_dict[guid] for guid in values]
+        nodes = [graph[guid] for guid in values]
         bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
         bool_results.append(bool_result)
         E.modify_element_to_model(model, new_model, graph, key, vertices=bool_result[0], faces= bool_result[1])

@@ -18,7 +18,6 @@ like range betweeen 100-150 then persay 300 wall can never be reached
 Task for the week:
 1. Get all touching wall type in a group
 2. Perform boolean operation using the library could be trimesh/ Pymesh
-
 """
 # ====================================================================
 # Helpers Functons
@@ -82,8 +81,6 @@ def np_intersect_rows_atol(arr1,arr2, atol = 0.01):
 def get_polygon_area(arr):
   x = arr[:,0]
   y = arr[:,1]
-  print(arr)
-
   return 0.5 * np.abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
 # ====================================================================
 # Display Functions
