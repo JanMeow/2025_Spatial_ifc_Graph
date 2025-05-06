@@ -9,6 +9,7 @@ import display
 import export as E
 import geometry_processing as GP
 import compute_proxy as CP
+import cornering as C
 # ===================================================================================
 # Global Variables for import and export file paths
 # ===================================================================================
@@ -31,15 +32,24 @@ def main():
     # ====================================================================
     graph = Graph.create(root)
     graph.build_bvh()
-    # node = graph.node_dict[guid]
+    # node = graph[guid]
     # queries = graph.bvh_query(node.geom_info["bbox"])
 
     # Build the graph based on relationship
     # ====================================================================
     for node in graph.node_dict.values():
         if node.geom_info != None:
-            node.near = [graph.node_dict[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
+            node.near = [graph[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
                          if guid != node.guid]
+    # The original input ifc roof were not typed so i have to do it manually.
+    roof_id = ["28aBLRPE1BG8SIr2KuT2kw","3XDvnQJPj2B9J$8W1k1bdZ", "3Zr2lZTZj0GhCS2xwxq5AA", "3Zr2lZTZj0GhCS2xwxq5AA",
+               "0_rR1BdgX1VwLmdcGWmD2O", "1K$8Ku4NPFcAJ9X46IE_rz", "0zlLHiur1ElR$u0pjr99AU", "0TAmI$AOf2HOFYvSNZEV2u", 
+               "1QmrSv$7f8vB34GVkkI57J", "38etAjtY94yR9Iz7PW6muJ", "3vCHKIfl5D98aKKOrI_mXU", "38etAjtY94yR9Iz7PW6muJ",
+               "2t5Dc_P6LAQxsNJlWPfvpN", "0kg6FaO3975AZ4ew2GsBwm", "00n4wBngLESh3sJgGPM8tl", "3U_YbDPkP8wh$il6GPzfG6",
+               "3g_LwPgxPAxRWRbwjTaX27", "19F6LEtSbAVBR1XKPuuhuV","0s2avnVezEQxP3GDgRf3dd", "2FQHPJ30nEVPcqIUba8A5n"]
+    for id in roof_id:
+        node = graph[id]
+        node.geom_type = "IfcRoof"
 
     # Show the direct connection
     # ====================================================================
@@ -58,9 +68,9 @@ def main():
     r0 = "1QmrSv$7f8vB34GVkkI57J"
     r1 = "0TAmI$AOf2HOFYvSNZEV2u"
     r2 = "0zlLHiur1ElR$u0pjr99AU"
-    nodeR0 = graph.node_dict[r0]
-    nodeR1 = graph.node_dict[r1]
-    nodeR2 = graph.node_dict[r2]
+    nodeR0 = graph[r0]
+    nodeR1 = graph[r1]
+    nodeR2 = graph[r2]
     # PCA Decomposition
     # ============================
     # temp0 = collision.create_OOBB(nodeR0, "PCA")
@@ -80,23 +90,16 @@ def main():
     # Get all connected same type (wall and slab)
     # Roof elements are tested against their PCA/ Convex Hull similarity 
     # ====================================================================
-    result_W = graph.merge_by_type("IfcWall")
-    result_S = graph.merge_by_type("IfcSlab")
-    # This does not work on test1.ifc because no elements are typed ifcroof I manually change the roof type 
-    roof_id = ["28aBLRPE1BG8SIr2KuT2kw","3XDvnQJPj2B9J$8W1k1bdZ", "3Zr2lZTZj0GhCS2xwxq5AA", "3Zr2lZTZj0GhCS2xwxq5AA",
-               "0_rR1BdgX1VwLmdcGWmD2O", "1K$8Ku4NPFcAJ9X46IE_rz", "0zlLHiur1ElR$u0pjr99AU", "0TAmI$AOf2HOFYvSNZEV2u", 
-               "1QmrSv$7f8vB34GVkkI57J", "38etAjtY94yR9Iz7PW6muJ", "3vCHKIfl5D98aKKOrI_mXU", "38etAjtY94yR9Iz7PW6muJ",
-               "2t5Dc_P6LAQxsNJlWPfvpN", "0kg6FaO3975AZ4ew2GsBwm", "00n4wBngLESh3sJgGPM8tl", "3U_YbDPkP8wh$il6GPzfG6"]
-    for id in roof_id:
-        node = graph.node_dict[id]
-        node.geom_type = "IfcRoof"
-    result_R = graph.merge_by_type("IfcRoof")
+    # result_W = graph.merge_by_type("IfcWall")
+    # result_S = graph.merge_by_type("IfcSlab")
+
+    # result_R = graph.merge_by_type("IfcRoof")
  
     # Boolean Operation
     # ====================================================================
-    plain_model, storey = E.create_project_structure()
-    result = result_W | result_S | result_R
-    bool_results = []
+    # plain_model, storey = E.create_project_structure()
+    # result = result_W | result_S | result_R
+    # bool_results = []
     # for key, values in result.items():
     #     nodes = [graph.node_dict[guid] for guid in values]
     #     bool_result = GP.boolean_3D(nodes, operation="union", return_type = "vf_list")
@@ -113,13 +116,6 @@ def main():
     #         E.create_element_in_model( plain_model, graph, key, value.geom_info["vertex"], value.geom_info["face"], shape = "PolygonalFaceSet")
     # plain_model.write("data/ifc/P_meow2.ifc")
    
-
-
-    # Computing Proxy
-    # ====================================================================
-    test_node0 = graph.node_dict["0DPk3As8fAPwVPbv4Ds3ps" ]
-    CP.get_features_for_compute(test_node0)
-
 
     # ====================================================================
     # TESTING EXPORT  Currently there are problem in copying the project structure for some files
@@ -145,7 +141,7 @@ def main():
     """
     #Problem2, some object are not directly stored in the space
     # print(E.get_container_rel(model,"3XDvnQJPj2B9J$8W1k1bdZ"))
-    # print(graph.node_dict["3XDvnQJPj2B9J$8W1k1bdZ"].geom_type)
+    # print(graph["3XDvnQJPj2B9J$8W1k1bdZ"].geom_type)
     # assigns = [rel for rel in new_model.by_type("IfcRelAssignsToGroup")
     #        if rel.RelatingGroup and rel.RelatingGroup.GlobalId == roof.GlobalId]
     # print(assigns)
@@ -158,38 +154,17 @@ def main():
     # # print(_copy.GlobalId)
     # print(graph.node_dict["3XDvnQJPj2B9J$8W1k1bdZ"].geom_type)
     # for key, values in result.items():
-    #     nodes = [graph.node_dict[guid] for guid in values]
+    #     nodes = [graph[guid] for guid in values]
     #     bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
     #     bool_results.append(bool_result)
     #     E.modify_element_to_model(model, new_model, graph, key, vertices=bool_result[0], faces= bool_result[1])
     # new_model.write("data/ifc/meow1.ifc")
 
-
-
-
-
-
-    # buildings = new_model.by_type("IfcBuilding")
-    # for rel in buildings[1].IsDecomposedBy:
-    #     print("haha")
-    #     print(rel)
-    #     if rel.is_a("IfcRelAggregates"):
-    #         for child in rel.RelatedObjects:
-    #             print("child")
-    #             print(child)
-    #             for xchild in child.IsDecomposedBy:
-    #                 print("wowww")
-
-
-
-
-
-
     # Displaying mesh, points, boolean or vectors
     # ====================================================================
     # display.show(display.mesh(bool_result, obj_type = "trimesh"))
 
-    # node = graph.node_dict[result.keys[0]]
+    # node = graph[result.keys[0]]
     # results = result[result.values[0]]
     # print(node)
     # print(results)
@@ -199,6 +174,10 @@ def main():
     #     display.vector(temp[1], origin = temp[0][0], length = 1)
     #               ])
 
+    #Cornering
+    # ====================================================================
+    corners = C.find_wall_corners(graph)
+    print(corners)
     # Exporting the model after rewriting the geometry to ifc
     # ====================================================================
     # export = []

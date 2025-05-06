@@ -10,7 +10,7 @@ from geometry_processing import decompose_2D_from_base, angle_between, get_base_
 # ===================================================================================
 # Global Variables for units and tolerance
 # ===================================================================================
-round_to = 2
+round_to = 8
 atol = 1e-3
 # ===================================================================================
 # ===================================================================================
@@ -205,6 +205,10 @@ class Graph:
     self.bvh = None
   def __len__(self):
         return len(self.node_dict)
+  def __getitem__(self, guid):
+        return self.node_dict[guid]
+  def __setitem__(self, guid, node):
+        self.node_dict[guid] = node
   def get_bbox(self):
     arr = np.vstack([node.geom_info["bbox"] for node in self.node_dict.values() 
                      if node.geom_info !=None])
@@ -240,31 +244,31 @@ class Graph:
           stack.append(current_bvh.right)
     return [node.guid for node in collisions]
   def get_connections(self,guid):
-    node = self.node_dict[guid]
+    node = self[guid]
     connections = [guid + "//" + node_n.guid for node_n in node.near
                    if node_n.guid != guid]
     return connections
   def loop_detection(self, guid, max_depth):
-    node = self.node_dict[guid]
+    node = self[guid]
     return loop_detecton(node, max_depth)
   def merge_adjacent(self, guid):
-    node = self.node_dict[guid]
+    node = self[guid]
     return merge(node)
   def merge_by_type(self, ifc_type):
     dict = {}
     merged = set()
-    guids = [key for key,value in self.node_dict.items() if value.geom_type == ifc_type]
+    guids = [key for key,value in self.items() if value.geom_type == ifc_type]
     for guid in guids:
       if guid not in merged:
-        results = merge(self.node_dict[guid])
+        results = merge(self[guid])
         for result in results:
           merged.add(result)
         if len(results) > 1:
           dict[guid] = results
     return dict
   def gjk_query(self,guid1, guid2):
-    node1 = self.node_dict[guid1]
-    node2 = self.node_dict[guid2]
+    node1 = self[guid1]
+    node2 = self[guid2]
     t_planes1 = get_triangulated_planes(node1)
     t_planes2 = get_triangulated_planes(node2)
     collisions = []
@@ -285,7 +289,7 @@ class Graph:
     cls = cls(root.GlobalId)
     for node in bfs_traverse(root, list_contained_elements = True,func = write_to_node):
       if node!= None:
-        cls.node_dict[node.guid] = node
+        cls[node.guid] = node
     cls.get_bbox()
     print("Graph created")
     return cls

@@ -13,7 +13,7 @@ import trimesh
 def export_trimesh(graph, guids, file_path):
     scene = trimesh.Scene()
     for guid in guids:
-        node = graph.node_dict[guid]
+        node = graph[guid]
         v,f = node.geom_info["vertices"], node.geom_info["faces"]
 # ====================================================================
 #  Functons for exporting partial IFC model
@@ -581,7 +581,7 @@ def assign_to_container(old_model, new_model, guid):
         print(f"Warning: Could not find container for element {guid}.")
         return 
 def modify_element_to_model(old_model, new_model, graph, guid, vertices=None, faces=None):
-    node = graph.node_dict[guid]
+    node = graph[guid]
     old_entity = old_model.by_guid(guid)
     new_entity =  copy_entity(new_model, old_entity, except_attrs=["id", "ObjectPlacement", "Representation"])
     # === Create shape representation for the element
@@ -596,7 +596,7 @@ def modify_element_to_model(old_model, new_model, graph, guid, vertices=None, fa
     return element
 # Temporary function.
 def create_element_in_model(new_model, graph, guid, vertices=None, faces=None, shape = None):
-    node = graph.node_dict[guid]
+    node = graph[guid]
     new_entity = new_model.create_entity(node.geom_type, 
                                          GlobalId=node.guid, 
                                          Name=node.name)
