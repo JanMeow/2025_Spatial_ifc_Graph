@@ -243,6 +243,11 @@ class Graph:
         if current_bvh.right:
           stack.append(current_bvh.right)
     return [node.guid for node in collisions]
+  def create_edges(self):
+    for node in self.node_dict.values():
+      if node.geom_info != None:
+        node.near = [self[guid] for guid in self.bvh_query(node.geom_info["bbox"])
+                    if guid != node.guid]
   def get_connections(self,guid):
     node = self[guid]
     connections = [guid + "//" + node_n.guid for node_n in node.near

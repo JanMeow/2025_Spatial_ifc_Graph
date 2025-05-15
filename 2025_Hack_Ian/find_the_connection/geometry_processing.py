@@ -45,7 +45,6 @@ def decompose_2D(node):
   return vs/ np.linalg.norm(vs, axis = 1)[:, np.newaxis]
 def decompose_2D_from_base(base):
   vs = np.array([base[1]- base[0],base[2] - base[1]])
-  scalars = np.linalg.norm(vs, axis = 1)
   sort_indices = np.argsort(np.linalg.norm(vs, axis = 1))
   return vs[sort_indices]
 def get_unit_vector(v):
@@ -67,11 +66,24 @@ def get_local_coors(T_matrix, vertex):
     ones = np.ones(shape = (vertex.shape[0],1))
     result = np.around(np.hstack((vertex, ones)) @ inverse, 2)
     return result[:,0:-1]
-def np_intersect_rows(arr1, arr2):
-  set0 = set(map(tuple, arr1))
-  set1 = set(map(tuple, arr2))
+def np_intersect_rows(arr0, arr1, return_type = "ndarray"):
+  set0 = set(map(tuple, arr0))
+  set1 = set(map(tuple, arr1))
   shared = set0.intersection(set1)
-  return np.array(list(shared))
+  if return_type == "ndarray":
+    return np.array(list(shared))
+  elif return_type == "list":
+    return list(shared)
+  elif return_type == "set":
+    return shared
+  elif return_type == "index":
+    tiled_0 = np.tile(arr0, (1,2)).reshape(arr0.shape[0], 2, -1)
+    tiled_1 = np.tile(arr1, (1,2)).reshape(arr1.shape[0], 2, -1)
+    mask_0 = np.any(np.all(tiled_0 - np.array(list(shared)) == 0, axis = 2, keepdims = True), axis = 1)
+    mask_1 = np.any(np.all(tiled_0 - np.array(list(shared)) == 0, axis = 2, keepdims = True), axis = 1)
+    return np.argwhere(mask_0[:,0] == True), np.argwhere(mask_1[:,0] == True)
+  else:
+    raise ValueError("Invalid return type. Use 'ndarray', 'list', or 'set'.")
 def np_intersect_rows_atol(arr1,arr2, atol = 0.01):
   diffs = np.linalg.norm(arr1[:, None, :] - arr2[None, :, :], axis=2)
   matches = diffs < atol
