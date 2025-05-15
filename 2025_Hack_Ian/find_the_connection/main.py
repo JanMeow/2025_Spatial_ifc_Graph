@@ -74,9 +74,7 @@ def main():
     # ============================
     # temp0 = collision.create_OOBB(nodeR0, "PCA")
     # temp1 = collision.create_OOBB(nodeR1, "PCA")
-    # print(temp0[2][1]-temp0[2][0])
-    # print(temp1[2][1]-temp1[2][0]) 
-    # print(temp1[1])
+
     # Similarity Check using Hungarian / Gaussian method
     # ============================
     # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-6, method = "Hungarian"))
@@ -175,17 +173,31 @@ def main():
 
     #Cornering
     # ====================================================================
-    corners = C.find_wall_corners(graph)
-    for i, (A,B) in enumerate(zip(corners["A"], corners["B"])):
-        if i >1:
-            break
-        nodeA = graph[A]
-        nodeB = graph[B]
-        print("Before")
-        print(nodeA.geom_info["vertex"])
-        A_scaled, B_scaled = C.scale_wall_to(nodeA, nodeB)
-        print("After")
-        print(A_scaled)
+    #load the models for cornering 
+    ifc_corner_path = ifc_folder/"WallCorneringType01.ifc"
+    corner_model = ifcopenshell.open(ifc_corner_path)
+    root_C = corner_model.by_type("IfcProject")[0]
+    graph_C = Graph.create(root_C)
+    graph_C.build_bvh()
+    graph_C.create_edges()
+
+    walls = [e for e in graph_C.node_dict.values() if e.geom_type == "IfcWall"]
+    corners = C.find_wall_corners(graph_C)
+
+    for k,v in corners.items():
+        node_0 = graph_C[k]
+        for e in v:
+            node_1 = graph_C[e]
+            C.make_corner_type_2(node_0, node_1)
+            # C.return_dominant_wall(node_0, node_1)
+
+    # plain_model, storey = E.create_project_structure()
+    # for i, (A,B) in enumerate(zip(corners["A"], corners["B"])):
+        # if i >=1:
+        #     break
+        # A_scaled, B_scaled = C.make_corner_type_1(A, B)
+        # C.make_corner_type_2(A, B)
+
     # Exporting the model after rewriting the geometry to ifc
     # ====================================================================
     # export = []
