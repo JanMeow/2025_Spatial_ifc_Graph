@@ -79,9 +79,10 @@ def np_intersect_rows(arr0, arr1, return_type = "ndarray"):
   elif return_type == "index":
     tiled_0 = np.tile(arr0, (1,2)).reshape(arr0.shape[0], 2, -1)
     tiled_1 = np.tile(arr1, (1,2)).reshape(arr1.shape[0], 2, -1)
-    mask_0 = np.any(np.all(tiled_0 - np.array(list(shared)) == 0, axis = 2, keepdims = True), axis = 1)
-    mask_1 = np.any(np.all(tiled_0 - np.array(list(shared)) == 0, axis = 2, keepdims = True), axis = 1)
-    return np.argwhere(mask_0[:,0] == True), np.argwhere(mask_1[:,0] == True)
+    mask_0 = np.any(np.all(tiled_0 - np.array(list(shared)) == 0, axis = 2), axis = 1)
+    mask_1 = np.any(np.all(tiled_0 - np.array(list(shared)) == 0, axis = 2), axis = 1)
+    
+    return np.argwhere(mask_0 == True).reshape(-1), np.argwhere(mask_1 == True).reshape(-1)
   else:
     raise ValueError("Invalid return type. Use 'ndarray', 'list', or 'set'.")
 def np_intersect_rows_atol(arr1,arr2, atol = 0.01):

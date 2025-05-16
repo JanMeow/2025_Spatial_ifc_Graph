@@ -306,6 +306,7 @@ class Node:
     self.guid = guid
     self.psets = psets
     self.near = []
+
   def intersect(node1,node2):
     bbox1 = node1.geom_info["bbox"]
     bbox2 = node2.geom_info["bbox"]
