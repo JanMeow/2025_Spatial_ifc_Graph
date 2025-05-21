@@ -55,12 +55,11 @@ def return_dominant_wall(node0, node1):
     var_U = np.dot((base_curve_0 - intersection), vec_0[0])
     # Variances = 0 are the points that are in the same level as the intersection. 
     # The other number if negative means outer, positive means inner.
+    # Return both nodes and arrange it such that the first node is the dominant wall
     if np.sum(var_U) < 0:
-        print("Node 0 is the dominant wall")
-        return node0
+        return node0, node1
     else:
-        print("Node 1 is the dominant wall")
-        return node1
+        return node1, node0
     
 
 def make_corner_type_1(node0, node1):
@@ -70,8 +69,8 @@ def make_corner_type_1(node0, node1):
     we need to check if its already a dominant wall if yes then no need to do anything.
     """
     #Check if node0 is already a dominant wall
-    dominant_wall = return_dominant_wall(node0, node1)
-    if dominant_wall == node0:
+    node0_checked, node1_checked = return_dominant_wall(node0, node1)
+    if node0_checked == node0:
         print("Node 0 is already the dominant wall")
         return 
     
@@ -96,9 +95,24 @@ def make_corner_type_2(node0, node1):
     We know the overlapping point is always in the outer line.
     """
      
-    dominant_wall = return_dominant_wall(node0, node1)
-    intersections = GP.np_intersect_rows(node0.geom_info["vertex"], node1.geom_info["vertex"], return_type = "index")
-    
+    node0, node1 = return_dominant_wall(node0, node1)
+    vertex0 = node0.geom_info["vertex"]
+    vertex1 = node1.geom_info["vertex"]
+    intersections_args = GP.np_intersect_rows(vertex0, vertex1, return_type = "index")
+    intersections0 = node0.geom_info["vertex"][intersections_args[0]]
+
+    base_curve_0 = GP.get_base_curve(node0)
+    vec_0 = GP.decompose_2D_from_base(base_curve_0)
+    pts = intersections0 - vec_0[0] 
+    if np.any(np.sum(vertex0 -pts[0], axis = 1) ==0):
+        # Set the intersection point as pts
+        node0.geom_info["vertex"][intersections_args[0]] = pts
+        node1.geom_info["vertex"][intersections_args[1]] = pts
+        return
+    else:
+        pts = intersections0 + vec_0[0]
+        node0.geom_info["vertex"][intersections_args[0]] = pts
+        node1.geom_info["vertex"][intersections_args[1]] = pts
     
 
     # base_curve_0 = GP.get_base_curve(node0)
