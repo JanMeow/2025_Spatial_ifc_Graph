@@ -102,23 +102,22 @@ def make_corner_type_2(node0, node1):
     intersections0 = node0.geom_info["vertex"][intersections_args[0]]
 
     base_curve_0 = GP.get_base_curve(node0)
+    base_curve_1 = GP.get_base_curve(node1)
     vec_0 = GP.decompose_2D_from_base(base_curve_0)
-    pts = intersections0 - vec_0[0] 
-    if np.any(np.sum(vertex0 -pts[0], axis = 1) ==0):
-        # Set the intersection point as pts
-        node0.geom_info["vertex"][intersections_args[0]] = pts
-        node1.geom_info["vertex"][intersections_args[1]] = pts
-        return
-    else:
-        pts = intersections0 + vec_0[0]
-        node0.geom_info["vertex"][intersections_args[0]] = pts
-        node1.geom_info["vertex"][intersections_args[1]] = pts
+    vec_1 = GP.decompose_2D_from_base(base_curve_1)
     
+    pts1 = intersections0 - vec_0[0] 
+    pts0 = intersections0 - vec_1[0]
+    print(pts0)
+    if np.any(np.sum(vertex1 -pts0[0], axis = 1) ==0):
+        node0.geom_info["vertex"][intersections_args[0]] = pts0
+    else:
+        pts0 = intersections0 + vec_1[0]
+        node0.geom_info["vertex"][intersections_args[0]] = pts0
 
-    # base_curve_0 = GP.get_base_curve(node0)
-    # base_curve_1 = GP.get_base_curve(node1)
-    # vec_0 = GP.decompose_2D_from_base(base_curve_0)
-    # vec_1 = GP.decompose_2D_from_base(base_curve_1)
-    # print(base_curve_0)
-    # print(base_curve_1)
+    if np.any(np.sum(vertex0 -pts1[0], axis = 1) ==0):
+        node1.geom_info["vertex"][intersections_args[1]] = pts1
+    else:
+        pts1 = intersections0 + vec_0[0]
+        node1.geom_info["vertex"][intersections_args[1]] = pts1
     return
