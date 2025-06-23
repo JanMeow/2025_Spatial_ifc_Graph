@@ -291,7 +291,7 @@ class Graph:
                 # collisions.add(tuple(map(tuple,plane2)))
     return collisions
   #for mattias testing
-  def simplify_wall(self):
+  def simplify_wall_expression(self):
     result = {}
     walls = [node for node in self.node_dict.values() if node.geom_type == "IfcWall"]
     for wall in walls:
@@ -299,16 +299,16 @@ class Graph:
         continue
       if wall.guid in result:
         continue
-      result[wall.guid] = 1
-      route = deque([wall])
-      subset = []
-      while route:
-        wall = route.popleft()
-        subset.append(wall)
-        base = get_base_curve(wall)
+      result[wall.guid] = []
+      group0 = deque([wall])
+      group1 = []
+      while group0:
+        current = group0.popleft()
+        group1.append(current)
+        base = get_base_curve(current)
         vs = np.array([base[1]- base[0],base[2] - base[1]])
         vs = vs[np.argsort(np.linalg.norm(vs, axis = 1))]
-        for e in wall.near:
+        for e in current.near:
           if e.geom_info == "IfcWall":
             base_n = get_base_curve(e)
             shared_vertex = np_intersect_rows(base, base_n)
@@ -317,15 +317,21 @@ class Graph:
             vector_shared = shared_vertex[1] - shared_vertex[0]
             #longer side is the same as vector formed by the shared vertex
             if np.isclose(vs[1]- vector_shared, 0, atol = 1e-5):
-              route.append(e)
-              subset.append(e)
-      for node in subset:
-        result[node.guid] = subset
-      subset = []
-
-            # I assume they are striaht extrusions for now
-          # Check if they share 2 vertex in both top and base curve ? 
-    return
+              group0.append(e)
+              group1.append(e)
+      # Creating bbox for the group
+      # bbox = None
+      # if len(group1) > 1:
+      #   arr = np.vstack([node.geom_info["bbox"] for node in group1])
+      #   _max = np.max(arr, axis = 0)
+      #   _min = np.min(arr, axis = 0)
+      #   bbox = np.vstack((_min,_max))
+      # Add to result to avoid redundant check
+      for node in group1:
+        result[node.guid] = group1
+        # result[node.guid] = bbox
+      group1 = []
+    return result
   @classmethod
   def create(cls, root):
     cls = cls(root.GlobalId)
