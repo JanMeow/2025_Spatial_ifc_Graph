@@ -184,12 +184,28 @@ def main():
     walls = [e for e in graph_C.node_dict.values() if e.geom_type == "IfcWall"]
     corners = C.find_wall_corners(graph_C)
 
-    for k,v in corners.items():
-        node_0 = graph_C[k]
-        for e in v:
-            node_1 = graph_C[e]
-            C.make_corner_type_2(node_0, node_1)
-            # C.return_dominant_wall(node_0, node_1)
+    id1 = "1HkkBiNMj2QxiYDMs$fFfE"
+    id2 = "2swkh7pu12T8rLSf3$nrcy"
+
+    node0 = graph_C[id1]
+    node1 = graph_C[id2]
+    print(node0.geom_info["vertex"])
+    print(GP.np_intersect_rows(node0.geom_info["vertex"], node1.geom_info["vertex"]))
+    C.make_corner_type_2(node0, node1)
+    print(node0.geom_info["vertex"])
+    # for k,v in corners.items():
+    #     node0 = graph_C[k]
+    #     for e in v:
+    #         node1 = graph_C[e]
+    #         print(node0.guid, node1.guid)
+    #         # base_curve_0 = GP.get_base_curve(node0)
+    #         # base_curve_1 = GP.get_base_curve(node1)
+    #         # centroid = np.mean(np.vstack((base_curve_0, base_curve_1)), axis=0)
+    #         # intersection = GP.np_intersect_rows(base_curve_0, base_curve_1)
+    #         # print(intersection)
+    #         C.make_corner_type_2(node0, node1)
+    #         # C.return_dominant_wall(node_0, node_1)
+    # Need to write a function to memorise which corners has been seen
 
     # plain_model, storey = E.create_project_structure()
     # for i, (A,B) in enumerate(zip(corners["A"], corners["B"])):
