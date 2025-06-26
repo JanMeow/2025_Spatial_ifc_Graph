@@ -228,3 +228,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+"""
+5 aufbau, variants wjicj takes 200,000, howmany laxers, how much time, price 
+what are the perfromance factors we are calculating 
+show one aufbauten 
+"""

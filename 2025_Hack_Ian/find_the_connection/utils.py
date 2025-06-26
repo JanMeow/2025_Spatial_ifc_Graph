@@ -291,9 +291,9 @@ class Graph:
                 # collisions.add(tuple(map(tuple,plane2)))
     return collisions
   #for mattias testing
-  def simplify_wall_expression(self):
+  def simplify_wall_expression(self, wall_type = "IfcWall"):
     result = {}
-    walls = [node for node in self.node_dict.values() if node.geom_type == "IfcWall"]
+    walls = [node for node in self.node_dict.values() if node.geom_type == wall_type]
     for wall in walls:
       if wall.geom_info != None:
         continue
@@ -309,7 +309,7 @@ class Graph:
         vs = np.array([base[1]- base[0],base[2] - base[1]])
         vs = vs[np.argsort(np.linalg.norm(vs, axis = 1))]
         for e in current.near:
-          if e.geom_info == "IfcWall":
+          if e.geom_info == wall_type:
             base_n = get_base_curve(e)
             shared_vertex = np_intersect_rows(base, base_n)
             if len(shared_vertex) != 2:
