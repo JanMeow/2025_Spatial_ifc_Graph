@@ -1,0 +1,42 @@
+# Ignore node modules
+**/node_modules/
+**/.cache/
+**/.parcel-cache/
+**/.build/
+**/.dist/
+*.log
+
+# Ignore k8s files it will be pushed to gitops repo separately
+k8s/
+**/k8s/
+
+#Ignore git files
+**/.git/
+**/.gitignore/
+
+# Ignore virtual environments
+**/venv/
+**/.venv/
+**/.env/
+
+#Ignore env file
+.env
+**/.env
+**/var.py
+
+# Ignore Python cache files
+__pycache__/
+**/__pycache__/
+**/.cache/
+*.pyc
+*.pyo
+
+# Ignore system-specific files
+.DS_Store  # macOS
+Thumbs.db  # Windows
+
+# Ignore IDE/editor settings
+.vscode/
+**/.idea/
+**/.vscode/
+*.code-workspace
