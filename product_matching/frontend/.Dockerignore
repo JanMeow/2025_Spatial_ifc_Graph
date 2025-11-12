@@ -1,0 +1,19 @@
+# Exclude node_modules directory
+node_modules
+
+# Exclude all log files
+*.log
+
+# Exclude environment files
+.env
+.env.local
+
+# Ignore build directories
+/build
+/dist
+
+# Include only the package.json file from the root directory
+!package.json
+
+#Ignore git file
+.git

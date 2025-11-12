@@ -1,0 +1,12 @@
+# Git
+.git
+.gitignore
+
+# Distribution / packaging
+.Python
+env/
+
+# Virtual environment
+.env
+.venv/
+venv/
