@@ -1,0 +1,13 @@
+# docker-compose.yml for ecs deployment instead of k8s to save cost
+version: "3.9"
+services:
+  web:
+    image: 814962838004.dkr.ecr.eu-central-1.amazonaws.com/dokwood-bauteilmatcher-frontend:v0
+    ports:
+      - 3000:80
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+  backend:
+    image: 814962838004.dkr.ecr.eu-central-1.amazonaws.com/dokwood-bauteilmatcher-backend:v0
+    ports:
+      - 5000:5000

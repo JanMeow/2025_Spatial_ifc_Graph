@@ -1,0 +1,64 @@
+variables:
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: 814962838004
+  AWS_ECR_REPOSITORY: dokwood-bauteilmatcher
+  VERSION: v0
+  ECR_REGISTRY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""   # disable TLS for DinD
+  GITOPS_HOST: gitlab.ti.bfh.ch
+  GITOPS_PROJECT: dokwood
+  GITOPS_REPO_NAME: dokwood-bauteilmatcher-gitops
+  GITOPS_REPO: "${GITOPS_HOST}/${GITOPS_PROJECT}/${GITOPS_REPO_NAME}.git"
+  
+stages:
+  - test
+  - build
+  - deploy
+
+run_tests:
+  image: python:3.13-slim
+  stage: test
+  script:
+    - cd product_matching/backend
+    - pip install -r requirements.txt
+    - python -m pytest -q tests/test_app.py
+
+build_product_matching:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache aws-cli
+    - aws --version
+    - aws ecr get-login-password --region "${AWS_REGION}"| docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+  script:
+    # cd to product_matching folder as gitlab runner reference root repository
+    - cd product_matching
+    - echo "CWD $(pwd)"
+    - docker build -t "${ECR_REGISTRY}/${AWS_ECR_REPOSITORY}-frontend:${VERSION}" --no-cache --build-arg REACT_APP_API_URL=/api -f frontend/Dockerfile frontend
+    - docker push "${ECR_REGISTRY}/${AWS_ECR_REPOSITORY}  -frontend:${VERSION}"
+    - docker build -t "${ECR_REGISTRY}/${AWS_ECR_REPOSITORY}-backend:${VERSION}" -f backend/Dockerfile backend
+    - docker push "${ECR_REGISTRY}/${AWS_ECR_REPOSITORY}-backend:${VERSION}"
+
+push_to_gitops_repo:
+  stage: deploy
+  image: alpine:latest
+  services: []
+  variables:
+    GIT_HTTPS_URL: "https://oauth2:${GITOPS_TOKEN}@${GITOPS_REPO}"
+    ENV_PATH: "apps/bauteilmatcher/overlays/dev"
+    IMAGE_REPO: "${ECR_REGISTRY}/${AWS_ECR_REPOSITORY}"
+    BRANCH: "ci/testing"
+  before_script:
+    - apk add --no-cache git yq
+  script: 
+    - git clone "$GIT_HTTPS_URL"
+    - cd dokwood-bauteilmatcher-gitops/$ENV_PATH
+    - yq -i '(.images[] | select(.name == env(IMAGE_REPO))).newTag = env(CI_COMMIT_SHA)' kustomization.yaml
+    - git add -A
+    - git config user.name "gitlab-ci-bot"
+    - git checkout -B "$BRANCH"
+    - git commit -m "[staging] web -> ${CI_COMMIT_SHA}" || echo "No changes"
+    - git push -u origin HEAD:"$BRANCH"

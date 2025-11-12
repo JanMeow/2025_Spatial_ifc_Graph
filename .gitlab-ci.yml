@@ -1,0 +1,2 @@
+include:
+  - local: 'product_matching/.gitlab-ci-pm.yml'

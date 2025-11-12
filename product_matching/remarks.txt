@@ -1,0 +1,99 @@
+1. The current filter calls api everytime it makes an request 
+This can be optimised by saving some results on the client side
+and then slice it instead of calling api 
+2. Slide could implement some debouncing to reduce uncessary api call
+3. track price for eks  usd 5.37 at 14:00
+
+
+  '''
+    debug aw1 spundschalung not even red points appear DONE
+    within tolerance => Pink  DONE
+    problem is the thickness it will take on a range anyways..... 
+    
+    operator + value 
+    U value, price is always smaller than DONE
+    sound greater than 
+    group u value and tolerance together 
+    click column => show only part of the table 
+    filter sort them by differen performance value or price 
+    open api for calculation services => talk to QiFeng about the development of it in the future
+    requirment profile 
+    '''
+
+    task for tomorrow:
+    1. Create  Kustomiztion File 
+    2. Finish setting up the CI to make digest to the gitops repo DONE
+    3. Install ArgoCD in cluster to start ArgoCD
+    4. Spend an hour on Networking revision
+    5, write pytest for it, Test env , dev env
+    add .template
+
+    new props 
+    combustible/ non combustible, bool, basd on layers 
+    display a dropdown for all avaiallbe attr 
+    select props you want in the platform 
+    calculat them and save them on DB or on the fly 
+    2 layers 
+    props for a wall (on DB)
+    props you care about for a wall (on platform)
+    the nested depednecy 
+
+    1.
+    2.
+    3.overlaying reuqirements 
+    4. collaborative tool of stating requiremnt 
+
+    Search usecase
+    BC1 :
+    for Carpentries, you would compare across all AW1 within your own debouncing
+    curently focus on BC1 
+
+
+    BC2 :
+    for client, do thy want to compare across carpentry
+    change the deployment
+    calculate std mean for gaussian
+
+    dont add too much complexity
+
+    TESTING CASE 1
+    the one who generates the code desont know the corner case 
+    Manaul Test => translating back to the code for the tesing => 
+    formalising some of the workflow we had 
+    use the example from last time and generate one
+
+    turning the variants 
+    query Aussandwand type 1.1  get layers and all possible thicknesses
+    requirement for both side
+    incroporate the schema 
+    i will make a meeting with QiFeng to do it 
+
+    To do:
+    Scheudle a meeting with Qifeng t
+    ask Qi for the ERD for the build up and product group 
+
+
+    in order to calculate this all AW, you will need to calculate all variants anyway
+
+    build up layers informtation
+    expand variatns   
+    return => information 
+
+
+
+  Topics for until first week of November 
+  1. graphQL
+  2. event loop
+  3. What does init.py do
+  4. Dependency injection
+  5. Setting up a intermediate DB
+
+  models = business entitiy definition 
+  
+  To do
+  1. Create a DB for representative products using sqlalchemy
+  2. Refactor the codes into models, schema, services and controller format
+
+  pre-calculation/ after-calculation
+  are there existing non stadnard buildups ?
+  RequirementProfileRequest doesnt work but request work

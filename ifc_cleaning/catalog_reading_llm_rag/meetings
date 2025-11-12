@@ -1,0 +1,128 @@
+[wall type1, [0,0,0,0,0] value, version]
+
+
+Logistics 
+
+1. Different MVP dilivery
+GM and SH differ in MVP delivery. 
+Bauteil matcher is a core tool for SH which we are developing.
+There exists discrepency between SH and GM in developing Bauteil matcher. We will need to discuss our actual deliver by the end of the year if GM involvment in the development of bauteil matcher changes. 
+2. Different Data format
+The two carpentry currently have different ways of calculating the layer "Zellulosefaserdämmung	", which leads to uncertainty in calcuation as
+    2.0.1 More varaitions could arise if this layer are seens as "product group"  => meaning the 250,000 combinations we have will still increase 
+    2.0.2 If the behaviour of the data from these possible new combinations coming from the "Zellulosefaserdämmung" are different from the current layers, it affects how we could capture the behaviour of the entire data landscape. To optimise them, we can not optimise it without at least being confident to say we have seen enough and can draw conclusion.
+    2.0.3 The actual matching/ connection to the DB is done by Qhifang, without consolidating the data format we can not create a DB => A decision has to be made not now since we can still analsye the data and then optimize it without saving to a DB and relating it to other entities but at some point to develop into a tool for SH, this will need to be discussed.
+3. Minimal Packaging of the Matcher
+If we are to develop a matcher as a minimum working tool for SH, we would need to spend a bit of our own efforts to create a minimal front end, backend and DB which were supposed to be done by Qhifang but if he has other prioties, we need some help.
+4. Calculation of U values, acoustics, structures etc....
+The current rules we have are not proved by experts, We will need to have someone who can tell us how to calculate them and the certification process etc... 
+
+In short, what we need 
+1. Actual data landscape 
+    What could still be resulting in variants ?
+    Do we need to also look at other products apart from aussenwand, does their data behave the same way as the Aussenwand etc?
+2. Consolidation between GM and SH
+    Either Consolidation of decision of the data format. This is something GM and SH has to decide regardless of matching
+3. Experts opinions on performance value caluation
+4. All Searching Criteria 
+    Conditions such as minimizing the number of mateirals, is_certiried, zu_value search by range or target ?  etc.... Would be great if we have a list of this but at current stage it does not affect the data discovery process.
+
+3000 => 
+
+
+What are the differences between the two MVP ?? 
+full Matching criteria that should also matches the data schema aka, search price by range, by what attribute booleans
+You mentioned more variants, what are the variants you are thinking of? How many ? 
+The question lies not now not in calculating all of them but set up rules to calculate them
+and also get a sense of how many variants are there, if they fall into a pattern or not
+Certain questions are not answerable, we need expert
+Rules => criteria/ data schema => dtermined if we can answer it or not => if not, we need to ask expert
+
+Getting a sense of the data, and seeing if we need to
+1. save all of the data
+2. precalculate all of the variants/ half of them 
+3. If they follow certain pattern, we can use the pattern to approximate, or use it to inform the search criteria
+e.g, U values do not exist at 0.17-0.18, then searching has no point at this range and since they cluster together,
+we can determine a step kind of search ? or determine whether to go to certain U value, you must take certain layetrs
+so if you search say 0,2, you must take a construction layer of 340mm up something like this
+
+This is a step for data analysis, not really for the matching so why save at DB ? 
+also saving at DB is done by QiFang anyways
+
+What needs to be done by the end of the year ? what is the must have for the bauteil matcher ? 
+
+
+Tenanat have different views on the data 
+Current process
+1. Global katalog 
+2. Open Project, creating a project automaitcally creates a project catalog
+3. Create anforderungen so a subset of the global katalog that fulfills the condiitons is created
+4. They mentioned certain layers are created (implying a new build up is created and will need to be pushed to the DB ?)
+5. 
+
+
+I think the word optimization is used on two levels
+one for finding the closest fit based on users 
+one for optimizting the data => calculating all the vairants is it necessay => how much do we need to claculate ? part pre-calculated, part saving 
+
+what is a priduct group ? the layres you see in ecvel are more like a product group
+
+Search on product level 
+
+requirement set group = a list of different requirement e.g, FR, thickness ..... 
+
+How many levels i have => in case of2, with insulation, minarl, stone wall => means 3 variants => 6 different stadnard product => 
+calculate non standard 
+
+
+
+02.07
+Product group => specified certain layer
+the system should working on both materials and products product groups = materials 
+mathcing happens on the product group level 
+
+filtering critreia will help reduce some combinations 
+wall build up
+level of information from product
+pre-filter => 2 filters 
+post-filter 
+matching
+filtering for product group 
+what are the thickness standards 
+
+db for perfromance will refer to the guid to your different products 
+
+the core dispute now is you can just use the stabdard
+genertor => all variations =>
+you know the stadnard but would you like to know other possiblities.
+the clients specfies certain things that doesnt fit the standard 
+a scalable option for also other firms 
+to understand whether it is calculatable whether it is 
+combination happens to the lowest level 
+
+
+track the version of the 3d object 
+concactnate strings to original ifc guid
+is it a layer or not ? 
+matching catalog => write to project catalog^
+
+
+
+preset => for the group =>
+what layer coppresond to another layer 
+some layers are fixed and others are not 
+isnt it already wh
+for every buldup => we need pre-dertmined sets of variants 
+
+we need a bit of an Ui here 
+
+
+calculating all the variants 
+
+Pre-filtering
+1. Type of the product
+2. layers materials / thickness
+3. whether certain build up is valid 
+
+
+Tenant can select what they want 

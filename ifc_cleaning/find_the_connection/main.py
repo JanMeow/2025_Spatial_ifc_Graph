@@ -1,0 +1,262 @@
+import ifcopenshell
+import numpy as np
+from pathlib import Path
+from utils import  Graph, merge_test, np_intersect_rows
+from traversal import get_adjacent, bfs_traverse
+import trimesh
+import collision
+import display
+import export as E
+import geometry_processing as GP
+import cornering as C
+# ===================================================================================
+# Global Variables for import and export file paths
+# ===================================================================================
+ifc_folder = Path("data")/"ifc"
+ifc_folder.mkdir(parents=True, exist_ok=True)
+ifc_path = ifc_folder/"test1.ifc"
+export_path = "data/ifc/new_model.ifc"
+# ===================================================================================
+# ===================================================================================
+# ====================================================================
+# Main function to run the script
+# ====================================================================
+def main():
+    # Read the IFC file:
+    # ====================================================================
+    model = ifcopenshell.open(ifc_path)
+    root = model.by_type("IfcProject")[0]
+
+    # # Create a graph and establish BVH Tree
+    # ====================================================================
+    graph = Graph.create(root)
+    graph.build_bvh()
+    # node = graph[guid]
+    # queries = graph.bvh_query(node.geom_info["bbox"])
+
+    # Build the graph based on relationship
+    # ====================================================================
+    for node in graph.node_dict.values():
+        if node.geom_info != None:
+            node.near = [graph[guid] for guid in graph.bvh_query(node.geom_info["bbox"])
+                         if guid != node.guid]
+    # The original input ifc roof were not typed so i have to do it manually.
+    roof_id = ["28aBLRPE1BG8SIr2KuT2kw","3XDvnQJPj2B9J$8W1k1bdZ", "3Zr2lZTZj0GhCS2xwxq5AA", "3Zr2lZTZj0GhCS2xwxq5AA",
+               "0_rR1BdgX1VwLmdcGWmD2O", "1K$8Ku4NPFcAJ9X46IE_rz", "0zlLHiur1ElR$u0pjr99AU", "0TAmI$AOf2HOFYvSNZEV2u", 
+               "1QmrSv$7f8vB34GVkkI57J", "38etAjtY94yR9Iz7PW6muJ", "3vCHKIfl5D98aKKOrI_mXU", "38etAjtY94yR9Iz7PW6muJ",
+               "2t5Dc_P6LAQxsNJlWPfvpN", "0kg6FaO3975AZ4ew2GsBwm", "00n4wBngLESh3sJgGPM8tl", "3U_YbDPkP8wh$il6GPzfG6",
+               "3g_LwPgxPAxRWRbwjTaX27", "19F6LEtSbAVBR1XKPuuhuV","0s2avnVezEQxP3GDgRf3dd", "2FQHPJ30nEVPcqIUba8A5n"]
+    for id in roof_id:
+        node = graph[id]
+        node.geom_type = "IfcRoof"
+
+    # Show the direct connection
+    # ====================================================================
+    # print(graph.get_connections(guid1))
+
+    # Detecting Corner around using loop detection
+    # ====================================================================
+    # print(graph.loop_detection(guid1, max_depth=3))
+
+    # Test Narrow Phase Collision Detection
+    # ====================================================================
+    # gjk_test = graph.gjk_query(guid1, guid2)
+
+    #  Get all connected same type (inclinde geom / roof) using PCA / Convex Hull Best face
+    # ====================================================================
+    r0 = "1QmrSv$7f8vB34GVkkI57J"
+    r1 = "0TAmI$AOf2HOFYvSNZEV2u"
+    r2 = "0zlLHiur1ElR$u0pjr99AU"
+    nodeR0 = graph[r0]
+    nodeR1 = graph[r1]
+    nodeR2 = graph[r2]
+    # PCA Decomposition
+    # ============================
+    # temp0 = collision.create_OOBB(nodeR0, "PCA")
+    # temp1 = collision.create_OOBB(nodeR1, "PCA")
+
+    # Similarity Check using Hungarian / Gaussian method
+    # ============================
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-6, method = "Hungarian"))
+    # print(collision.check_pca_similarity(temp0[1], temp1[1], atol = 1e-3, method = "Gaussian")) 
+    # Convex Hull Decomposition
+    # ============================
+    # temp = collision.create_OOBB(nodeR0, "ConvexHull")
+    # print(temp[1])
+
+    # Get all connected same type (wall and slab)
+    # Roof elements are tested against their PCA/ Convex Hull similarity 
+    # ====================================================================
+    # result_W = graph.merge_by_type("IfcWall")
+    # result_S = graph.merge_by_type("IfcSlab")
+
+    # result_R = graph.merge_by_type("IfcRoof")
+ 
+    # Boolean Operation
+    # ====================================================================
+    # plain_model, storey = E.create_project_structure()
+    # result = result_W | result_S | result_R
+    # bool_results = []
+    # for key, values in result.items():
+    #     nodes = [graph.node_dict[guid] for guid in values]
+    #     bool_result = GP.boolean_3D(nodes, operation="union", return_type = "vf_list")
+    #     bool_results.append(bool_result)
+    #     E.create_element_in_model(plain_model, graph, key, vertices=bool_result[0], faces= bool_result[1], shape = "PolygonalFaceSet")
+    # plain_model.write("data/ifc/p_meow1.ifc")
+
+    # # Adding other parts that are not booleaned
+    # # ============================
+    # booled = [item for sublist in result.values() for item in sublist ]
+
+    # for key,value in graph.node_dict.items():
+    #     if key not in booled:
+    #         E.create_element_in_model( plain_model, graph, key, value.geom_info["vertex"], value.geom_info["face"], shape = "PolygonalFaceSet")
+    # plain_model.write("data/ifc/P_meow2.ifc")
+   
+
+    # ====================================================================
+    # TESTING EXPORT  Currently there are problem in copying the project structure for some files
+    # ====================================================================
+    # new_model = E.copy_project_structure(model, max_depth=1)
+    # new_model2, storey = E.create_project_structure()
+    # new_model.write("data/ifc/meow0.ifc")
+
+    """
+    Problem1
+    fixing why the export does not work when it reaches building level
+    Having a work tool can lead to testing
+    [wall type1, [0,0,0,0,0] value, version]
+
+    What are the differences between the two MVP ?? 
+    full Matching criteria that should also matches the data schema aka, search price by range, by what attribute booleans
+    You mentioned more variants, what are the variants you are thinking of? How many ? 
+    The question lies not now not in calculating all of them but set up rules to calculate them
+    and also get a sense of how many variants are there, if they fall into a pattern or not
+    Certain questions are not answerable, we need expert
+    Rules => criteria/ data schema => dtermined if we can answer it or not => if not, we need to ask expert
+
+    Getting a sense of the data, and seeing if we need to
+    1. save all of the data
+    2. precalculate all of the variants/ half of them 
+    3. If they follow certain pattern, we can use the pattern to approximate, or use it to inform the search criteria
+    e.g, U values do not exist at 0.17-0.18, then searching has no point at this range and since they cluster together,
+    we can determine a step kind of search ? or determine whether to go to certain U value, you must take certain layetrs
+    so if you search say 0,2, you must take a construction layer of 340mm up something like this
+
+    This is a step for data analysis, not really for the matching so why save at DB ? 
+    also saving at DB is done by QiFang anyways
+
+    What needs to be done by the end of the year ? 
+
+
+    """
+    # project = model.by_type("IfcProject")[0]
+    # new_project = model.by_type("IfcProject")[0]
+    # building = model.by_type("IfcBuilding")[0]
+    # print(project.OwnerHistory)
+    # print(new_project.OwnerHistory)
+    # print(building.get_info())
+    """
+    Problem2
+    some object are not directly stored in the space
+    """
+    #Problem2, some object are not directly stored in the space
+    # print(E.get_container_rel(model,"3XDvnQJPj2B9J$8W1k1bdZ"))
+    # print(graph["3XDvnQJPj2B9J$8W1k1bdZ"].geom_type)
+    # assigns = [rel for rel in new_model.by_type("IfcRelAssignsToGroup")
+    #        if rel.RelatingGroup and rel.RelatingGroup.GlobalId == roof.GlobalId]
+    # print(assigns)
+
+
+    # roof_element = model.by_guid("3XDvnQJPj2B9J$8W1k1bdZ")
+    # print(E.get_container_rel(model,"3XDvnQJPj2B9J$8W1k1bdZ"))
+    # print(ifcopenshell.util.element.get_container(roof_element))
+    # # _copy = ifcopenshell.api.root.copy_class(roof_element)
+    # # print(_copy.GlobalId)
+    # print(graph.node_dict["3XDvnQJPj2B9J$8W1k1bdZ"].geom_type)
+    # for key, values in result.items():
+    #     nodes = [graph[guid] for guid in values]
+    #     bool_result = boolean_3D(nodes, operation="union", return_type = "vf_list")
+    #     bool_results.append(bool_result)
+    #     E.modify_element_to_model(model, new_model, graph, key, vertices=bool_result[0], faces= bool_result[1])
+    # new_model.write("data/ifc/meow1.ifc")
+
+    # Displaying mesh, points, boolean or vectors
+    # ====================================================================
+    # display.show(display.mesh(bool_result, obj_type = "trimesh"))
+
+    # node = graph[result.keys[0]]
+    # results = result[result.values[0]]
+    # print(node)
+    # print(results)
+    # display.show([
+    #     display.mesh([nodeR0], edge_only= True),
+    #     display.points(temp[0]),
+    #     display.vector(temp[1], origin = temp[0][0], length = 1)
+    #               ])
+
+    #Cornering
+    # ====================================================================
+    #load the models for cornering 
+    ifc_corner_path = ifc_folder/"WallCorneringType01.ifc"
+    corner_model = ifcopenshell.open(ifc_corner_path)
+    root_C = corner_model.by_type("IfcProject")[0]
+    graph_C = Graph.create(root_C)
+    graph_C.build_bvh()
+    graph_C.create_edges()
+
+    walls = [e for e in graph_C.node_dict.values() if e.geom_type == "IfcWall"]
+    corners = C.find_wall_corners(graph_C)
+
+    id1 = "1HkkBiNMj2QxiYDMs$fFfE"
+    id2 = "2swkh7pu12T8rLSf3$nrcy"
+
+    node0 = graph_C[id1]
+    node1 = graph_C[id2]
+    print(node0.geom_info["vertex"])
+    print(GP.np_intersect_rows(node0.geom_info["vertex"], node1.geom_info["vertex"]))
+    C.make_corner_type_2(node0, node1)
+    print(node0.geom_info["vertex"])
+    # for k,v in corners.items():
+    #     node0 = graph_C[k]
+    #     for e in v:
+    #         node1 = graph_C[e]
+    #         print(node0.guid, node1.guid)
+    #         # base_curve_0 = GP.get_base_curve(node0)
+    #         # base_curve_1 = GP.get_base_curve(node1)
+    #         # centroid = np.mean(np.vstack((base_curve_0, base_curve_1)), axis=0)
+    #         # intersection = GP.np_intersect_rows(base_curve_0, base_curve_1)
+    #         # print(intersection)
+    #         C.make_corner_type_2(node0, node1)
+    #         # C.return_dominant_wall(node_0, node_1)
+    # Need to write a function to memorise which corners has been seen
+
+    # plain_model, storey = E.create_project_structure()
+    # for i, (A,B) in enumerate(zip(corners["A"], corners["B"])):
+        # if i >=1:
+        #     break
+        # A_scaled, B_scaled = C.make_corner_type_1(A, B)
+        # C.make_corner_type_2(A, B)
+
+    # Exporting the model after rewriting the geometry to ifc
+    # ====================================================================
+    # export = []
+    # for values in result_W.values():
+    #     export.extend(values)
+    # E.export(export, model, file_path = export_path)
+    # model_new = E.create_basic_structure(ref= model)[0]
+    # element = E.create_ifc_element_from_node(model_new, nodeR0)
+    # E.export([key], model, file_path= export_path)
+    # model_new.write("data/ifc/hahaha.ifc")
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+"""
+5 aufbau, variants wjicj takes 200,000, howmany laxers, how much time, price 
+what are the perfromance factors we are calculating 
+show one aufbauten 
+"""
